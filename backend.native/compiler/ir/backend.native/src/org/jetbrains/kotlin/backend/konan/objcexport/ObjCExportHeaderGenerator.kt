@@ -19,7 +19,6 @@ import org.jetbrains.kotlin.resolve.descriptorUtil.*
 import org.jetbrains.kotlin.resolve.scopes.MemberScope
 import org.jetbrains.kotlin.types.KotlinType
 import org.jetbrains.kotlin.types.TypeUtils
-import org.jetbrains.kotlin.types.isNullable
 import org.jetbrains.kotlin.types.typeUtil.supertypes
 import org.jetbrains.kotlin.utils.addIfNotNull
 
@@ -581,15 +580,21 @@ abstract class ObjCExportHeaderGenerator(
             members: List<D>,
             converter: (D) -> Set<RenderedStub<S>>) {
         members.forEach { member ->
-            val superMembers: Set<RenderedStub<S>> = (member.overriddenDescriptors as Collection<D>)
-                    .asSequence()
-                    .filter { mapper.shouldBeExposed(it) }
-                    .flatMap { converter(it).asSequence() }
-                    .toSet()
+            val memberStubs = converter(member).asSequence()
 
-            this += converter(member)
-                    .asSequence()
-                    .filterNot { superMembers.contains(it) }
+            val filteredMemberStubs = if (member.kind.isReal) {
+                memberStubs
+            } else {
+                val superMembers: Set<RenderedStub<S>> = (member.overriddenDescriptors as Collection<D>)
+                        .asSequence()
+                        .filter { mapper.shouldBeExposed(it) }
+                        .flatMap { converter(it).asSequence() }
+                        .toSet()
+
+                memberStubs.filterNot { superMembers.contains(it) }
+            }
+
+            this += filteredMemberStubs
                     .map { rendered -> rendered.stub }
                     .toList()
         }
