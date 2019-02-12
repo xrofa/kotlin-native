@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.backend.konan.objcexport
 
+import org.jetbrains.kotlin.analyzer.ModuleInfo
 import org.jetbrains.kotlin.backend.konan.descriptors.isArray
 import org.jetbrains.kotlin.backend.konan.descriptors.isInterface
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns
@@ -14,10 +15,21 @@ import org.jetbrains.kotlin.incremental.components.NoLookupLocation
 import org.jetbrains.kotlin.load.kotlin.PackagePartClassUtils
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
-import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.resolve.descriptorUtil.*
+import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.psi.psiUtil.getStrictParentOfType
+import org.jetbrains.kotlin.resolve.descriptorUtil.isSubclassOf
+import org.jetbrains.kotlin.resolve.descriptorUtil.module
 import org.jetbrains.kotlin.resolve.source.PsiSourceFile
 
+
+interface ObjCExportNameTranslator {
+    fun getFileClassName(file: KtFile): ObjCExportNamer.ClassOrProtocolName
+
+    fun getClassOrProtocolName(
+            ktClassOrObject: KtClassOrObject,
+            moduleInfo: ModuleInfo
+    ): ObjCExportNamer.ClassOrProtocolName
+}
 
 interface ObjCExportNamer {
     data class ClassOrProtocolName(val swiftName: String, val objCName: String, val binaryName: String = objCName)
@@ -29,31 +41,111 @@ interface ObjCExportNamer {
     fun getPropertyName(property: PropertyDescriptor): String
     fun getObjectInstanceSelector(descriptor: ClassDescriptor): String
     fun getEnumEntrySelector(descriptor: ClassDescriptor): String
+
+    fun numberBoxName(classId: ClassId): ClassOrProtocolName
+
+    val kotlinAnyName: ClassOrProtocolName
+    val mutableSetName: ClassOrProtocolName
+    val mutableMapName: ClassOrProtocolName
+    val kotlinNumberName: ClassOrProtocolName
 }
 
 fun createNamer(moduleDescriptor: ModuleDescriptor,
                 topLevelNamePrefix: String = moduleDescriptor.namePrefix): ObjCExportNamer =
         createNamer(moduleDescriptor, emptyList(), topLevelNamePrefix)
 
-fun createNamer(moduleDescriptor: ModuleDescriptor,
-                exportedDependencies: List<ModuleDescriptor>,
-                topLevelNamePrefix: String = moduleDescriptor.namePrefix): ObjCExportNamer {
-    val generator = object : ObjCExportHeaderGenerator(
-            moduleDescriptor,
-            exportedDependencies,
-            moduleDescriptor.builtIns,
-            topLevelNamePrefix
-    ) {
-        override fun reportWarning(text: String) {}
-        override fun reportWarning(method: FunctionDescriptor, text: String) {}
+fun createNamer(
+        moduleDescriptor: ModuleDescriptor,
+        exportedDependencies: List<ModuleDescriptor>,
+        topLevelNamePrefix: String = moduleDescriptor.namePrefix
+): ObjCExportNamer = ObjCExportNamerImpl(
+        (exportedDependencies + moduleDescriptor).toSet(),
+        moduleDescriptor.builtIns,
+        ObjCExportMapper(),
+        topLevelNamePrefix
+)
+
+fun createNameTranslator(
+        moduleInfo: ModuleInfo,
+        exportedDependencies: List<ModuleInfo>,
+        topLevelNamePrefix: String = moduleInfo.namePrefix
+): ObjCExportNameTranslator {
+    val moduleNames = (exportedDependencies + moduleInfo).map { it.name }.toSet()
+    return ObjCExportNameTranslatorImpl(moduleNames, topLevelNamePrefix)
+}
+
+// Note: this class duplicates some of ObjCExportNamerImpl logic,
+// but operates on different representation.
+internal open class ObjCExportNameTranslatorImpl(
+        private val moduleNames: Set<Name>,
+        topLevelNamePrefix: String
+) : ObjCExportNameTranslator {
+
+    private val helper = ObjCExportNamingHelper(topLevelNamePrefix)
+
+    override fun getFileClassName(file: KtFile): ObjCExportNamer.ClassOrProtocolName =
+            helper.getFileClassName(file)
+
+    override fun getClassOrProtocolName(
+            ktClassOrObject: KtClassOrObject,
+            moduleInfo: ModuleInfo
+    ): ObjCExportNamer.ClassOrProtocolName = helper.swiftClassNameToObjC(
+            getClassOrProtocolSwiftName(ktClassOrObject, moduleInfo)
+    )
+
+    private fun getClassOrProtocolSwiftName(
+            ktClassOrObject: KtClassOrObject,
+            moduleInfo: ModuleInfo
+    ): String = buildString {
+        val outerClass = ktClassOrObject.getStrictParentOfType<KtClassOrObject>()
+        // TODO: consider making it more strict.
+        if (outerClass != null) {
+            append(getClassOrProtocolSwiftName(outerClass, moduleInfo))
+
+            if (!ktClassOrObject.isInterface && !outerClass.isInterface) {
+                append(".").append(ktClassOrObject.name!!)
+            } else {
+                append(ktClassOrObject.name!!.capitalize())
+            }
+        } else {
+            if (moduleInfo.name !in moduleNames) {
+                append(moduleInfo.namePrefix)
+            }
+            append(ktClassOrObject.name)
+        }
     }
-    return generator.namer
+
+    private val KtPureClassOrObject.isInterface get() = when (this) {
+        is KtClass -> this.isInterface()
+        is KtObjectDeclaration -> false
+        else -> error("Unexpected KtClassOrObject: $this")
+    }
+}
+
+private class ObjCExportNamingHelper(
+        private val topLevelNamePrefix: String
+) {
+    fun getFileClassName(fileName: String): ObjCExportNamer.ClassOrProtocolName {
+        val baseName = PackagePartClassUtils.getFilePartShortName(fileName)
+        return ObjCExportNamer.ClassOrProtocolName(swiftName = baseName, objCName = "$topLevelNamePrefix$baseName")
+    }
+
+    fun swiftClassNameToObjC(swiftName: String): ObjCExportNamer.ClassOrProtocolName =
+            ObjCExportNamer.ClassOrProtocolName(swiftName, buildString {
+                append(topLevelNamePrefix)
+                swiftName.split('.').forEachIndexed { index, part ->
+                    append(if (index == 0) part else part.capitalize())
+                }
+            })
+
+    fun getFileClassName(file: KtFile): ObjCExportNamer.ClassOrProtocolName =
+            getFileClassName(file.name)
 }
 
 internal class ObjCExportNamerImpl(
-        val moduleDescriptors: Set<ModuleDescriptor>,
+        private val moduleDescriptors: Set<ModuleDescriptor>,
         builtIns: KotlinBuiltIns,
-        val mapper: ObjCExportMapper,
+        private val mapper: ObjCExportMapper,
         private val topLevelNamePrefix: String
 ) : ObjCExportNamer {
 
@@ -66,15 +158,15 @@ internal class ObjCExportNamerImpl(
             binaryName = "Kotlin$this"
     )
 
-    val kotlinAnyName = "KotlinBase".toUnmangledClassOrProtocolName()
+    override val kotlinAnyName = "KotlinBase".toUnmangledClassOrProtocolName()
 
-    val mutableSetName = "MutableSet".toSpecialStandardClassOrProtocolName()
-    val mutableMapName = "MutableDictionary".toSpecialStandardClassOrProtocolName()
+    override val mutableSetName = "MutableSet".toSpecialStandardClassOrProtocolName()
+    override val mutableMapName = "MutableDictionary".toSpecialStandardClassOrProtocolName()
 
-    fun numberBoxName(classId: ClassId): ObjCExportNamer.ClassOrProtocolName =
+    override fun numberBoxName(classId: ClassId): ObjCExportNamer.ClassOrProtocolName =
             classId.shortClassName.asString().toSpecialStandardClassOrProtocolName()
 
-    val kotlinNumberName = "Number".toSpecialStandardClassOrProtocolName()
+    override val kotlinNumberName = "Number".toSpecialStandardClassOrProtocolName()
 
     private val methodSelectors = object : Mapping<FunctionDescriptor, String>() {
 
@@ -204,8 +296,10 @@ internal class ObjCExportNamerImpl(
                 } else {
                     append(descriptor.name.asString().capitalize())
                 }
-            } else {
+            } else if (containingDeclaration is PackageFragmentDescriptor) {
                 appendTopLevelClassBaseName(descriptor)
+            } else {
+                error("unexpected class parent: $containingDeclaration")
             }
         }.mangledBySuffixUnderscores()
     }
@@ -219,8 +313,10 @@ internal class ObjCExportNamerImpl(
                     append(getClassOrProtocolObjCName(containingDeclaration))
                             .append(descriptor.name.asString().capitalize())
 
-                } else {
+                } else if (containingDeclaration is PackageFragmentDescriptor) {
                     append(topLevelNamePrefix).appendTopLevelClassBaseName(descriptor)
+                } else {
+                    error("unexpected class parent: $containingDeclaration")
                 }
             }.mangledBySuffixUnderscores()
         }
@@ -560,6 +656,21 @@ internal val ModuleDescriptor.namePrefix: String get() {
         .let { it.substring(1, it.lastIndex) }
         .capitalize()
         .replace('-', '_')
+
+    val uppers = moduleName.filterIndexed { index, character -> index == 0 || character.isUpperCase() }
+    if (uppers.length >= 3) return uppers
+
+    return moduleName
+}
+
+internal val ModuleInfo.namePrefix: String get() {
+    if (this.isKonanStdlib()) return "Kotlin"
+
+    // <fooBar> -> FooBar
+    val moduleName = this.name.asString()
+            .let { it.substring(1, it.lastIndex) }
+            .capitalize()
+            .replace('-', '_')
 
     val uppers = moduleName.filterIndexed { index, character -> index == 0 || character.isUpperCase() }
     if (uppers.length >= 3) return uppers
