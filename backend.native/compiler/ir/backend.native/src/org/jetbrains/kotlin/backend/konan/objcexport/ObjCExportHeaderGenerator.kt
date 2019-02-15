@@ -50,7 +50,8 @@ fun createObjCExportTranslator(
             (exportedDependencies + moduleDescriptor).toSet(),
             builtIns,
             mapper,
-            topLevelNamePrefix
+            topLevelNamePrefix,
+            local = true
     )
 
     return ObjCExportTranslatorImpl(
@@ -696,7 +697,7 @@ abstract class ObjCExportHeaderGenerator internal constructor(
             moduleDescriptors,
             builtIns,
             mapper,
-            ObjCExportNamerImpl(moduleDescriptors.toSet(), builtIns, mapper, topLevelNamePrefix)
+            ObjCExportNamerImpl(moduleDescriptors.toSet(), builtIns, mapper, topLevelNamePrefix, local = false)
     )
 
     constructor(

@@ -62,7 +62,8 @@ fun createNamer(
         (exportedDependencies + moduleDescriptor).toSet(),
         moduleDescriptor.builtIns,
         ObjCExportMapper(),
-        topLevelNamePrefix
+        topLevelNamePrefix,
+        local = true
 )
 
 fun createNameTranslator(
@@ -146,7 +147,8 @@ internal class ObjCExportNamerImpl(
         private val moduleDescriptors: Set<ModuleDescriptor>,
         builtIns: KotlinBuiltIns,
         private val mapper: ObjCExportMapper,
-        private val topLevelNamePrefix: String
+        private val topLevelNamePrefix: String,
+        private val local: Boolean
 ) : ObjCExportNamer {
 
     private fun String.toUnmangledClassOrProtocolName(): ObjCExportNamer.ClassOrProtocolName =
@@ -526,21 +528,22 @@ internal class ObjCExportNamerImpl(
             error("name candidates run out")
         }
 
-        fun getIfAssigned(element: T): N? = elementToName[element]
+        private fun getIfAssigned(element: T): N? = elementToName[element]
 
-        fun tryAssign(element: T, name: N): Boolean {
+        private fun tryAssign(element: T, name: N): Boolean {
             if (element in elementToName) error(element)
 
             if (reserved(name)) return false
 
-            val elements = nameToElements.getOrPut(name) { mutableListOf() }
-            if (elements.any { conflict(element, it) }) {
+            if (nameToElements[name].orEmpty().any { conflict(element, it) }) {
                 return false
             }
 
-            elements += element
+            if (!local) {
+                nameToElements.getOrPut(name) { mutableListOf() } += element
 
-            elementToName[element] = name
+                elementToName[element] = name
+            }
 
             return true
         }
