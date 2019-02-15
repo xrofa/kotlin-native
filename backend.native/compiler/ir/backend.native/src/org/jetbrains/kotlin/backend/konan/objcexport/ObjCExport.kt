@@ -39,7 +39,8 @@ internal class ObjCExport(val codegen: CodeGenerator) {
                 moduleDescriptors.toSet(),
                 context.moduleDescriptor.builtIns,
                 mapper,
-                context.moduleDescriptor.namePrefix
+                context.moduleDescriptor.namePrefix,
+                local = false
         )
 
         val objCCodeGenerator = ObjCExportCodeGenerator(codegen, namer, mapper)
