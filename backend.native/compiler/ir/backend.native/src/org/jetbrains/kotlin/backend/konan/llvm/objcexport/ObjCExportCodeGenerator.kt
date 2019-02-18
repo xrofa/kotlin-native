@@ -402,7 +402,7 @@ private fun ObjCExportCodeGenerator.emitFunctionConverters() {
 
     (0 .. ObjCExportMapper.maxFunctionTypeParameterCount).forEach { numberOfParameters ->
         val converter = generator.run { generateConvertFunctionToBlock(numberOfParameters) }
-        setObjCExportTypeInfo(context.builtIns.getFunction(numberOfParameters), constPointer(converter))
+        setObjCExportTypeInfo(context.ir.symbols.functions[numberOfParameters].descriptor, constPointer(converter))
     }
 }
 

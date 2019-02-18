@@ -224,6 +224,7 @@ internal class Context(config: KonanConfig) : KonanBackendContext(config) {
     lateinit var moduleDescriptor: ModuleDescriptor
 
     lateinit var objCExport: ObjCExport
+    val retainedDescriptors = mutableSetOf<DeclarationDescriptor>()
 
     override val builtIns: KonanBuiltIns by lazy(PUBLICATION) {
         moduleDescriptor.builtIns as KonanBuiltIns

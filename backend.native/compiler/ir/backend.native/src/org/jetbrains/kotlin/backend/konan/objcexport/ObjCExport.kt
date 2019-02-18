@@ -11,10 +11,7 @@ import org.jetbrains.kotlin.backend.konan.getExportedDependencies
 import org.jetbrains.kotlin.backend.konan.isNativeBinary
 import org.jetbrains.kotlin.backend.konan.llvm.CodeGenerator
 import org.jetbrains.kotlin.backend.konan.llvm.objcexport.ObjCExportCodeGenerator
-import org.jetbrains.kotlin.descriptors.CallableMemberDescriptor
-import org.jetbrains.kotlin.descriptors.ClassDescriptor
-import org.jetbrains.kotlin.descriptors.ModuleDescriptor
-import org.jetbrains.kotlin.descriptors.SourceFile
+import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.konan.file.File
 import org.jetbrains.kotlin.konan.target.CompilerOutputKind
 import org.jetbrains.kotlin.konan.target.KonanTarget
@@ -23,6 +20,7 @@ import org.jetbrains.kotlin.konan.target.AppleConfigurables
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.isSubpackageOf
+import org.jetbrains.kotlin.utils.DFS
 
 internal class ObjCExportedInterface(
         val generatedClasses: Set<ClassDescriptor>,
@@ -60,7 +58,45 @@ internal class ObjCExport(val context: Context) {
             headerGenerator.buildInterface()
         } else {
             null
+        }.apply {
+            recordRetainedDescriptors()
         }
+    }
+
+    private fun ObjCExportedInterface?.recordRetainedDescriptors() {
+        val roots = mutableSetOf<DeclarationDescriptor>()
+
+        // Descriptors from builtIns used in code generator:
+        roots += with(context.builtIns) {
+            listOf(any, string, unit, list, mutableList, set, mutableSet, map, mutableMap)
+        }
+
+        if (this != null) {
+            roots += generatedClasses
+            topLevel.values.forEach { roots += it }
+            categoryMembers.values.forEach { roots += it }
+        }
+
+        DFS.dfs(
+                roots,
+                {
+                    when (it) {
+                        is ClassDescriptor -> it.unsubstitutedMemberScope.getContributedDescriptors() +
+                                it.typeConstructor.supertypes.mapNotNull { it.constructor.declarationDescriptor }
+
+                        is PropertyDescriptor -> it.accessors + it.overriddenDescriptors
+                        is FunctionDescriptor -> it.overriddenDescriptors
+                        else -> emptyList()
+                    }
+                },
+                object : DFS.NodeHandler<DeclarationDescriptor, Unit> {
+                    override fun result() {}
+                    override fun afterChildren(current: DeclarationDescriptor) {
+                        context.retainedDescriptors += current
+                    }
+                    override fun beforeChildren(current: DeclarationDescriptor) = true
+                }
+        )
     }
 
     internal fun generate(codegen: CodeGenerator) {
