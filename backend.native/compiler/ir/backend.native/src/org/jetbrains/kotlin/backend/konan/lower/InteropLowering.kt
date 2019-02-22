@@ -530,7 +530,7 @@ internal class InteropLoweringPart1(val context: Context) : IrBuildingTransforme
 
             assert(constructedClassDescriptor.getSuperClassNotAny() == expression.descriptor.constructedClass)
 
-            val initMethod = expression.descriptor.getObjCInitMethod()!!
+            val initMethod = expression.symbol.owner.getObjCInitMethod()!!
 
             if (!expression.symbol.owner.objCConstructorIsDesignated()) {
                 context.reportCompilationError(
@@ -549,7 +549,7 @@ internal class InteropLoweringPart1(val context: Context) : IrBuildingTransforme
                     initMethodInfo,
                     superQualifier = symbolTable.referenceClass(expression.descriptor.constructedClass),
                     receiver = builder.getRawPtr(builder.irGet(constructedClass.thisReceiver!!)),
-                    arguments = initMethod.valueParameters.map { expression.getValueArgument(it)!! }
+                    arguments = initMethod.valueParameters.mapIndexed { index, it -> expression.getValueArgument(index)!! }
             )
 
             val superConstructor = symbolTable.referenceConstructor(
@@ -599,25 +599,26 @@ internal class InteropLoweringPart1(val context: Context) : IrBuildingTransforme
         expression.transformChildrenVoid()
 
         val descriptor = expression.descriptor.original
+        val declaration = expression.symbol.owner
 
-        if (descriptor is ConstructorDescriptor) {
-            val initMethod = descriptor.getObjCInitMethod()
+        if (declaration is IrConstructor) {
+            val initMethod = declaration.getObjCInitMethod()
 
             if (initMethod != null) {
                 val arguments = descriptor.valueParameters.map { expression.getValueArgument(it)!! }
                 assert(expression.extensionReceiver == null)
                 assert(expression.dispatchReceiver == null)
 
-                val constructedClass = descriptor.constructedClass
+                val constructedClass = declaration.constructedClass
                 val initMethodInfo = initMethod.getExternalObjCMethodInfo()!!
                 return builder.at(expression).run {
-                    val classPtr = getObjCClass(symbolTable.referenceClass(constructedClass))
+                    val classPtr = getObjCClass(symbolTable.referenceClass(constructedClass.descriptor))
                     irForceNotNull(callAllocAndInit(classPtr, initMethodInfo, arguments))
                 }
             }
         }
 
-        descriptor.getObjCFactoryInitMethodInfo()?.let { initMethodInfo ->
+        expression.symbol.owner.getObjCFactoryInitMethodInfo()?.let { initMethodInfo ->
             val arguments = (0 until expression.valueArgumentsCount)
                     .map { index -> expression.getValueArgument(index)!! }
 
@@ -627,7 +628,7 @@ internal class InteropLoweringPart1(val context: Context) : IrBuildingTransforme
             }
         }
 
-        descriptor.getExternalObjCMethodInfo()?.let { methodInfo ->
+        declaration.getExternalObjCMethodInfo()?.let { methodInfo ->
             val isInteropStubsFile =
                     currentFile.annotations.hasAnnotation(FqName("kotlinx.cinterop.InteropStubs"))
 

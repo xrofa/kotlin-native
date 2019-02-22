@@ -59,8 +59,11 @@ class KonanIrModuleDeserializer(
     var deserializedModuleProtoStringTables = mutableMapOf<ModuleDescriptor, KonanIr.StringTable>()
     var deserializedModuleProtoTypeTables = mutableMapOf<ModuleDescriptor, KonanIr.IrTypeTable>()
 
+    val uniqIdToDescriptor = mutableMapOf<UniqId, DeclarationDescriptor>()
+
     val resolvedForwardDeclarations = mutableMapOf<UniqIdKey, UniqIdKey>()
-    val descriptorReferenceDeserializer = DescriptorReferenceDeserializer(currentModule, resolvedForwardDeclarations)
+    val descriptorReferenceDeserializer = DescriptorReferenceDeserializer(currentModule, resolvedForwardDeclarations, uniqIdToDescriptor)
+    val fileAnnotations = mutableMapOf<IrFile, KonanIr.Annotations>()
 
     init {
         var currentIndex = 0L
@@ -69,6 +72,60 @@ class KonanIrModuleDeserializer(
             deserializedSymbols.put(UniqIdKey(null, UniqId(currentIndex, isLocal = false)), it.symbol)
             assert(symbolTable.referenceSimpleFunction(it.descriptor) == it.symbol)
             currentIndex++
+        }
+    }
+
+    fun registerDeserializedDescriptor(descriptor: DeclarationDescriptor) {
+
+        val discoverableDescriptor = when {
+            descriptor is PropertyAccessorDescriptor -> {
+                descriptor.correspondingProperty
+            }
+            descriptor is ClassDescriptor && descriptor.kind == ClassKind.ENUM_ENTRY -> {
+                descriptor.containingDeclaration
+            }
+            descriptor is DeserializedClassDescriptor ||
+            descriptor is DeserializedCallableMemberDescriptor -> {
+                descriptor
+            }
+            else -> {
+                println("skipping registration: $descriptor")
+                return
+            }
+        }
+
+        val uniqId = discoverableDescriptor.getUniqId()?.let { UniqId(it.index, isLocal = false) } ?: error("${descriptor}")
+
+        uniqIdToDescriptor.put(uniqId, discoverableDescriptor)
+    }
+
+    private fun registerUnbound(descriptor: DeclarationDescriptor) {
+        if (descriptor is WrappedDeclarationDescriptor<*>) return
+        registerDeserializedDescriptor(descriptor)
+        registerDeserializedDescriptor(descriptor.findTopLevelDescriptor())
+    }
+
+    override fun registerAllUnbounds() {
+        ArrayList(symbolTable.unboundClasses).forEach {
+            registerUnbound(it.descriptor)
+        }
+        ArrayList(symbolTable.unboundConstructors).forEach {
+            registerUnbound(it.descriptor)
+        }
+        ArrayList(symbolTable.unboundEnumEntries).forEach {
+            registerUnbound(it.descriptor)
+        }
+        ArrayList(symbolTable.unboundFields).forEach {
+            registerUnbound(it.descriptor)
+        }
+        ArrayList(symbolTable.unboundSimpleFunctions).forEach {
+            registerUnbound(it.descriptor)
+        }
+        ArrayList(symbolTable.unboundTypeParameters).forEach {
+            registerUnbound(it.descriptor)
+        }
+        ArrayList(symbolTable.propertyTable.keys).forEach {
+            registerUnbound(it)
         }
     }
 
@@ -150,11 +207,12 @@ class KonanIrModuleDeserializer(
         if (!deserializedTopLevels.contains(topLevelKey)) reachableTopLevels.add(topLevelKey)
 
         val symbol = deserializedSymbols.getOrPut(key) {
-            val descriptor = if (proto.hasDescriptorReference()) {
-                deserializeDescriptorReference(proto.descriptorReference)
-            } else {
-                null
-            }
+            val descriptor =
+                if (proto.hasDescriptorReference()) {
+                    deserializeDescriptorReference(proto.descriptorReference)
+                } else {
+                    null
+                }
 
             resolvedForwardDeclarations[key]?.let {
                 if (!deserializedTopLevels.contains(it)) reachableTopLevels.add(it) // Assuming forward declarations are always top levels.
@@ -173,12 +231,12 @@ class KonanIrModuleDeserializer(
         return symbol
     }
 
-    override fun deserializeDescriptorReference(proto: KonanIr.DescriptorReference): DeclarationDescriptor =
+    override fun deserializeDescriptorReference(proto: KonanIr.DescriptorReference): DeclarationDescriptor? =
          descriptorReferenceDeserializer.deserializeDescriptorReference(
-            deserializeString(proto.packageFqName),
-            deserializeString(proto.classFqName),
+            //deserializeString(proto.packageFqName),
+            //deserializeString(proto.classFqName),
             deserializeString(proto.name),
-            if (proto.hasUniqId()) proto.uniqId.index else null,
+            if (proto.hasUniqId()) UniqId(proto.uniqId.index, false) else error("no uniq id in descriptor reference"),
             isEnumEntry = proto.isEnumEntry,
             isEnumSpecial = proto.isEnumSpecial,
             isDefaultConstructor = proto.isDefaultConstructor,
@@ -211,26 +269,10 @@ class KonanIrModuleDeserializer(
         return KonanIr.IrDeclaration.parseFrom(stream, KonanSerializerProtocol.extensionRegistry)
     }
 
-    private fun findDeserializedDeclarationForDescriptor(descriptor: DeclarationDescriptor): DeclarationDescriptor? {
-        val topLevelDescriptor = descriptor.findTopLevelDescriptor()
+    // var firstUse: Boolean = true
 
-        if (topLevelDescriptor.module.isForwardDeclarationModule) return null
-
-        if (topLevelDescriptor !is DeserializedClassDescriptor && topLevelDescriptor !is DeserializedCallableMemberDescriptor) {
-            return null
-        }
-
-        val descriptorUniqId = topLevelDescriptor.getUniqId()
-            ?: error("could not get descriptor uniq id for $topLevelDescriptor")
-        val uniqId = UniqId(descriptorUniqId.index, isLocal = false)
-        val topLevelKey = UniqIdKey(topLevelDescriptor.module, uniqId)
-
-        // This top level descriptor doesn't have a serialized IR declaration.
-        if (topLevelKey.moduleOfOrigin == null) return null
-
-        reachableTopLevels.add(topLevelKey)
-
-        do {
+    private fun deserializeAllReachableTopLevels() {
+        while (reachableTopLevels.isNotEmpty()) {
             val key = reachableTopLevels.first()
 
             if (deserializedSymbols[key]?.isBound == true ||
@@ -249,7 +291,44 @@ class KonanIrModuleDeserializer(
 
             reachableTopLevels.remove(key)
             deserializedTopLevels.add(key)
-        } while (reachableTopLevels.isNotEmpty())
+        }
+    }
+
+    private fun findDeserializedDeclarationForDescriptor(descriptor: DeclarationDescriptor): DeclarationDescriptor? {
+
+        //if (firstUse) {
+        //    registerAllUnbounds()
+        //    firstUse = false
+        //}
+
+        val topLevelDescriptor = descriptor.findTopLevelDescriptor()
+
+        registerDeserializedDescriptor(descriptor)
+        registerDeserializedDescriptor(topLevelDescriptor)
+
+
+        //if (topLevelDescriptor.name.asString() == "Iterator") {
+            println("requested: $topLevelDescriptor")
+        //}
+
+        if (topLevelDescriptor.module.isForwardDeclarationModule) return null
+
+        if (topLevelDescriptor !is DeserializedClassDescriptor && topLevelDescriptor !is DeserializedCallableMemberDescriptor) {
+            return null
+        }
+
+        val descriptorUniqId = topLevelDescriptor.getUniqId()
+            ?: error("could not get descriptor uniq id for $topLevelDescriptor")
+        val uniqId = UniqId(descriptorUniqId.index, isLocal = false)
+        val topLevelKey = UniqIdKey(topLevelDescriptor.module, uniqId)
+        uniqIdToDescriptor.getOrPut(topLevelKey.uniqId) { topLevelDescriptor }
+
+        // This top level descriptor doesn't have a serialized IR declaration.
+        if (topLevelKey.moduleOfOrigin == null) return null
+
+        reachableTopLevels.add(topLevelKey)
+
+        deserializeAllReachableTopLevels()
 
         return topLevelDescriptor
     }
@@ -307,6 +386,11 @@ class KonanIrModuleDeserializer(
             }
             file.declarations.addAll(declarations)
         }
+
+        fileAnnotations.forEach {
+            it.key.annotations.addAll(deserializeAnnotations(it.value))
+        }
+        deserializeAllReachableTopLevels()
     }
 
     fun deserializeIrFile(fileProto: KonanIr.IrFile, moduleDescriptor: ModuleDescriptor, deseralizationStrategy: DeserializationStrategy): IrFile {
@@ -332,12 +416,19 @@ class KonanIrModuleDeserializer(
             }
         }
 
-        val annotations = deserializeAnnotations(fileProto.annotations)
-        file.annotations.addAll(annotations)
+        fileAnnotations.put(file, fileProto.annotations)
+//            val annotations = deserializeAnnotations(fileProto.annotations)
+ //           file.annotations.addAll(annotations)
 
 
-        if (deseralizationStrategy == DeserializationStrategy.EXPLICITLY_EXPORTED)
-            fileProto.explicitlyExportedToCompilerList.forEach { deserializeIrSymbol(it) }
+        // TODO: Do it only for final binary.
+        if (deseralizationStrategy == DeserializationStrategy.EXPLICITLY_EXPORTED) {
+            fileProto.explicitlyExportedToCompilerList.forEach {
+                val symbolProto =
+                    deserializedModuleProtoSymbolTables[deserializedModuleDescriptor]!!.getSymbols(it.index)
+                reachableTopLevels.add(symbolProto.topLevelUniqId.uniqIdKey(moduleDescriptor))
+            }
+        }
 
         return file
     }

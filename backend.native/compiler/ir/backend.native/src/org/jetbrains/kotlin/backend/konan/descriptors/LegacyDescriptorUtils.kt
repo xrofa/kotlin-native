@@ -28,6 +28,7 @@ import org.jetbrains.kotlin.resolve.DescriptorFactory
 import org.jetbrains.kotlin.resolve.OverridingUtil
 import org.jetbrains.kotlin.resolve.constants.StringValue
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isFunction
 import org.jetbrains.kotlin.ir.util.isKFunction
 import org.jetbrains.kotlin.resolve.checkers.ExpectedActualDeclarationChecker
@@ -157,20 +158,6 @@ internal fun DeclarationDescriptor.allContainingDeclarations(): List<Declaration
     }
     return list
 }
-
-// It is possible to declare "external inline fun",
-// but it doesn't have much sense for native,
-// since externals don't have IR bodies.
-// Enforce inlining of constructors annotated with @InlineConstructor.
-
-private val inlineConstructor = FqName("kotlin.native.internal.InlineConstructor")
-
-internal val FunctionDescriptor.needsInlining: Boolean
-    get() {
-        val inlineConstructor = annotations.hasAnnotation(inlineConstructor)
-        if (inlineConstructor) return true
-        return (this.isInline && !this.isExternal)
-    }
 
 fun AnnotationDescriptor.getStringValueOrNull(name: String): String? {
     val constantValue = this.allValueArguments.entries.atMostOne {

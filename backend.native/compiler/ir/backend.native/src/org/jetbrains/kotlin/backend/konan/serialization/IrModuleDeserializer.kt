@@ -61,7 +61,7 @@ abstract class IrModuleDeserializer(
 
     abstract fun deserializeIrSymbol(proto: KonanIr.IrSymbol): IrSymbol
     abstract fun deserializeIrType(proto: KonanIr.IrTypeIndex): IrType
-    abstract fun deserializeDescriptorReference(proto: KonanIr.DescriptorReference): DeclarationDescriptor
+    abstract fun deserializeDescriptorReference(proto: KonanIr.DescriptorReference): DeclarationDescriptor?
     abstract fun deserializeString(proto: KonanIr.String): String
 
     private fun deserializeTypeArguments(proto: KonanIr.TypeArguments): List<IrType> {
@@ -1014,7 +1014,7 @@ abstract class IrModuleDeserializer(
 
         val descriptor =
                 if (proto.hasDescriptor())
-                    deserializeDescriptorReference(proto.descriptor) as PropertyDescriptor
+                    deserializeDescriptorReference(proto.descriptor) as? PropertyDescriptor ?: WrappedPropertyDescriptor()
                 else
                     backingField?.descriptor as? WrappedPropertyDescriptor // If field's descriptor coincides with property's.
                             ?: getterToPropertyDescriptorMap.getOrPut(getter!!.symbol) { WrappedPropertyDescriptor() }
@@ -1116,6 +1116,7 @@ abstract class IrModuleDeserializer(
                 is IrProperty -> (descriptor as WrappedPropertyDescriptor).bind(declaration)
                 is IrEnumEntry -> (descriptor as WrappedEnumEntryDescriptor).bind(declaration)
                 is IrSimpleFunction -> (descriptor as WrappedSimpleFunctionDescriptor).bind(declaration)
+                else -> error("unknown wrapped descriptor: $descriptor")
             }
         }
         logger.log { "### Deserialized declaration: ${descriptor} -> ${ir2string(declaration)}" }

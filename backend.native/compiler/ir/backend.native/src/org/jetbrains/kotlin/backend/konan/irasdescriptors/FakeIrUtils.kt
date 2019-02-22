@@ -24,8 +24,8 @@ internal val IrDeclaration.module get() = this.descriptor.module
 @Deprecated("Do not call this method in the compiler front-end.")
 internal val IrField.isDelegate get() = @Suppress("DEPRECATION") this.descriptor.isDelegated
 
-internal fun IrFunction.getObjCMethodInfo() = this.descriptor.getObjCMethodInfo()
-internal fun IrFunction.getExternalObjCMethodInfo() = this.descriptor.getExternalObjCMethodInfo()
+//internal fun IrFunction.getObjCMethodInfo() = this.descriptor.getObjCMethodInfo()
+//internal fun IrFunction.getExternalObjCMethodInfo() = this.descriptor.getExternalObjCMethodInfo()
 internal fun IrFunction.isObjCClassMethod() = this.descriptor.isObjCClassMethod()
 
 internal fun IrClass.isObjCMetaClass() = this.descriptor.isObjCMetaClass()

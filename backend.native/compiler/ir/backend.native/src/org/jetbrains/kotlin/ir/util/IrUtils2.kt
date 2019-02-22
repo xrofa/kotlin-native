@@ -48,8 +48,10 @@ import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 import org.jetbrains.kotlin.ir.visitors.acceptVoid
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.resolve.calls.checkers.isRestrictsSuspensionReceiver
+import org.jetbrains.kotlin.resolve.descriptorUtil.hasBuilderInferenceAnnotation
 import org.jetbrains.kotlin.types.*
 import org.jetbrains.kotlin.types.KotlinType
 import org.jetbrains.kotlin.types.typeUtil.immediateSupertypes
@@ -654,3 +656,16 @@ fun IrClass.defaultOrNullableType(hasQuestionMark: Boolean) =
 
 fun IrFunction.isRestrictedSuspendFunction(languageVersionSettings: LanguageVersionSettings): Boolean =
         this.descriptor.extensionReceiverParameter?.type?.isRestrictsSuspensionReceiver(languageVersionSettings) == true
+// It is possible to declare "external inline fun",
+// but it doesn't have much sense for native,
+// since externals don't have IR bodies.
+// Enforce inlining of constructors annotated with @InlineConstructor.
+
+private val inlineConstructor = FqName("kotlin.native.internal.InlineConstructor")
+
+internal val IrFunction.needsInlining: Boolean
+    get() {
+        val inlineConstructor = this.descriptor.annotations.hasAnnotation(inlineConstructor)
+        if (inlineConstructor) return true
+        return (this.isInline && !this.isExternal)
+    }

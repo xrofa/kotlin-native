@@ -5,10 +5,10 @@ option java_outer_classname = "KonanIr";
 option optimize_for = LITE_RUNTIME;
 
 message DescriptorReference {
-    required String package_fq_name = 1;
-    required String class_fq_name = 2;
+    //required String package_fq_name = 1;
+    //required String class_fq_name = 2;
     required String name = 3;
-    optional UniqId uniq_id = 4;
+    required UniqId uniq_id = 4;
     optional bool is_getter = 5 [default = false];
     optional bool is_setter = 6 [default = false];
     optional bool is_backing_field = 7 [default = false];

@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.backend.konan.irasdescriptors
 
 import org.jetbrains.kotlin.backend.common.atMostOne
+import org.jetbrains.kotlin.backend.common.descriptors.WrappedDeclarationDescriptor
 import org.jetbrains.kotlin.backend.konan.descriptors.getArgumentValueOrNull
 import org.jetbrains.kotlin.backend.konan.descriptors.isInterface
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns
@@ -143,7 +144,9 @@ fun List<IrCall>.findAnnotation(fqName: FqName): IrCall? = this.firstOrNull {
 
 fun <T> IrDeclaration.getAnnotationArgumentValue(fqName: FqName, argumentName: String): T? {
     val annotation = this.annotations.findAnnotation(fqName)
+
     if (annotation == null) {
+        if (descriptor is WrappedDeclarationDescriptor<*>) return null
         // As a last resort try searching the descriptor.
         // This is needed for a period while we don't have IR for platform libraries.
         return this.descriptor.annotations

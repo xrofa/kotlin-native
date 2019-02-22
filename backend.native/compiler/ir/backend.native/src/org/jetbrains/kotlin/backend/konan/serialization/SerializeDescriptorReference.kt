@@ -30,15 +30,6 @@ class DescriptorReferenceSerializer(val declarationTable: DeclarationTable, val 
 
         val containingDeclaration = descriptor.containingDeclaration!!
 
-        val (packageFqName, classFqName) = when (containingDeclaration) {
-            is ClassDescriptor -> {
-                val classId = containingDeclaration.classId ?: return null
-                Pair(classId.packageFqName.toString(), classId.relativeClassName.toString())
-            }
-            is PackageFragmentDescriptor -> Pair(containingDeclaration.fqName.toString(), "")
-            else -> return null
-        }
-
         val isAccessor = declaration.isAccessor
         val isBackingField = declaration is IrField && declaration.correspondingProperty != null
         val isFakeOverride = declaration.origin == IrDeclarationOrigin.FAKE_OVERRIDE
@@ -48,7 +39,7 @@ class DescriptorReferenceSerializer(val declarationTable: DeclarationTable, val 
         val isEnumSpecial = declaration.origin == IrDeclarationOrigin.ENUM_CLASS_SPECIAL_MEMBER
 
 
-        val realDeclaration = if (isFakeOverride) {
+        val realDeclaration = /*if (isFakeOverride) {
             when (declaration) {
                 is IrSimpleFunction -> declaration.resolveFakeOverrideMaybeAbstract()
                 is IrField -> declaration.resolveFakeOverrideMaybeAbstract()
@@ -57,14 +48,15 @@ class DescriptorReferenceSerializer(val declarationTable: DeclarationTable, val 
             }
         } else {
             declaration
-        }
+        }*/
+        declaration
 
         val discoverableDescriptorsDeclaration: IrDeclaration? = if (isAccessor) {
             (realDeclaration as IrSimpleFunction).correspondingProperty!!
         } else if (isBackingField) {
             (realDeclaration as IrField).correspondingProperty!!
         } else if (isDefaultConstructor || isEnumEntry) {
-            null
+            realDeclaration.parent as IrDeclaration
         } else {
             realDeclaration
         }
@@ -73,8 +65,8 @@ class DescriptorReferenceSerializer(val declarationTable: DeclarationTable, val 
         uniqId?.let { declarationTable.descriptors.put(discoverableDescriptorsDeclaration.descriptor, it) }
 
         val proto = KonanIr.DescriptorReference.newBuilder()
-            .setPackageFqName(serializeString(packageFqName))
-            .setClassFqName(serializeString(classFqName))
+//            .setPackageFqName(serializeString(packageFqName))
+  //          .setClassFqName(serializeString(classFqName))
             .setName(serializeString(descriptor.name.toString()))
 
         if (uniqId != null) proto.setUniqId(protoUniqId(uniqId))

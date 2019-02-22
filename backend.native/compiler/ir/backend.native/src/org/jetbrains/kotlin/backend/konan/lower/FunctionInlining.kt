@@ -15,7 +15,6 @@ import org.jetbrains.kotlin.backend.common.lower.CoroutineIntrinsicLambdaOrigin
 import org.jetbrains.kotlin.backend.common.lower.createIrBuilder
 import org.jetbrains.kotlin.backend.konan.Context
 import org.jetbrains.kotlin.backend.konan.descriptors.isFunctionInvoke
-import org.jetbrains.kotlin.backend.konan.descriptors.needsInlining
 import org.jetbrains.kotlin.backend.konan.descriptors.resolveFakeOverride
 import org.jetbrains.kotlin.backend.konan.ir.KonanIrReturnableBlockImpl
 import org.jetbrains.kotlin.backend.konan.irasdescriptors.constructedClass
@@ -38,6 +37,7 @@ import org.jetbrains.kotlin.ir.expressions.impl.IrVarargImpl
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.impl.IrReturnableBlockSymbolImpl
 import org.jetbrains.kotlin.ir.util.getArguments
+import org.jetbrains.kotlin.ir.util.needsInlining
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
@@ -50,7 +50,7 @@ internal class FunctionInlining(val context: Context) : IrElementTransformerVoid
 
     override fun visitCall(expression: IrCall): IrExpression {
         val callSite = super.visitCall(expression) as IrCall
-        if (!callSite.descriptor.needsInlining)
+        if (!callSite.symbol.owner.needsInlining)
             return callSite
         if (callSite.symbol == context.ir.symbols.lateinitIsInitializedPropertyGetter)
             return callSite
