@@ -663,9 +663,17 @@ fun IrFunction.isRestrictedSuspendFunction(languageVersionSettings: LanguageVers
 
 private val inlineConstructor = FqName("kotlin.native.internal.InlineConstructor")
 
+internal val IrFunction.isInlineConstructor: Boolean
+    get() {
+        if (this is IrConstructor && (this.parent as IrClass).name.asString() == "Array") {
+            println("FIXME: Array inline contructor")
+            return true
+        }
+        return this.hasAnnotation(inlineConstructor)
+    }
+
 internal val IrFunction.needsInlining: Boolean
     get() {
-        val inlineConstructor = this.descriptor.annotations.hasAnnotation(inlineConstructor)
-        if (inlineConstructor) return true
+        if (this.isInlineConstructor) return true
         return (this.isInline && !this.isExternal)
     }

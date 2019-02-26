@@ -262,8 +262,8 @@ internal val DeclarationDescriptor.isFrozen: Boolean
                     // RTTI is used for non-reference type box or Objective-C object wrapper:
                     && (!this.defaultType.binaryTypeIsReference() || this.isObjCClass()))
 
-internal val FunctionDescriptor.isTypedIntrinsic: Boolean
-    get() = this.annotations.hasAnnotation(TypedIntrinsic)
+internal val IrFunction.isTypedIntrinsic: Boolean
+    get() = this.hasAnnotation(TypedIntrinsic)
 
 // TODO: coalesce all our annotation value getters into fewer functions.
 fun getAnnotationValue(annotation: AnnotationDescriptor): String? {

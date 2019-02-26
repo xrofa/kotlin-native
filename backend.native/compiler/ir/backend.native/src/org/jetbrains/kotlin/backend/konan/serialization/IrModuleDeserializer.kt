@@ -399,8 +399,8 @@ abstract class IrModuleDeserializer(
         val getter = if (proto.hasGetter()) deserializeIrSymbol(proto.getter) as IrSimpleFunctionSymbol else null
         val setter = if (proto.hasSetter()) deserializeIrSymbol(proto.setter) as IrSimpleFunctionSymbol else null
         val descriptor =
-                if (proto.hasDescriptor())
-                    deserializeDescriptorReference(proto.descriptor) as PropertyDescriptor
+                if (proto.hasDeclarationDescriptor())
+                    deserializeDescriptorReference(proto.declarationDescriptor) as PropertyDescriptor
                 else
                     field?.descriptor as? WrappedPropertyDescriptor // If field's descriptor coincides with property's.
                             ?: getterToPropertyDescriptorMap.getOrPut(getter!!) { WrappedPropertyDescriptor() }
@@ -1013,8 +1013,8 @@ abstract class IrModuleDeserializer(
         setter?.let { (it.descriptor as? WrappedSimpleFunctionDescriptor)?.bind(it) }
 
         val descriptor =
-                if (proto.hasDescriptor())
-                    deserializeDescriptorReference(proto.descriptor) as? PropertyDescriptor ?: WrappedPropertyDescriptor()
+                if (proto.hasDeclarationDescriptor())
+                    deserializeDescriptorReference(proto.declarationDescriptor) as? PropertyDescriptor ?: WrappedPropertyDescriptor()
                 else
                     backingField?.descriptor as? WrappedPropertyDescriptor // If field's descriptor coincides with property's.
                             ?: getterToPropertyDescriptorMap.getOrPut(getter!!.symbol) { WrappedPropertyDescriptor() }

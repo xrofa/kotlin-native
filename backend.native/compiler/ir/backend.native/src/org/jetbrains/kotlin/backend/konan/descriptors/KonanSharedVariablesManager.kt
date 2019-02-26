@@ -69,7 +69,7 @@ internal class KonanSharedVariablesManager(val context: KonanBackendContext) : S
         val refConstructorCall = IrCallImpl(
                 originalDeclaration.startOffset, originalDeclaration.endOffset,
                 refClass.typeWith(valueType),
-                refClassConstructor, refConstructor(valueType.toKotlinType()), 1
+                refClassConstructor, refClassConstructor.descriptor, 1
         ).apply {
             putTypeArgument(0, valueType)
         }

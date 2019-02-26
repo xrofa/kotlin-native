@@ -37,6 +37,7 @@ import org.jetbrains.kotlin.ir.expressions.impl.IrVarargImpl
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.impl.IrReturnableBlockSymbolImpl
 import org.jetbrains.kotlin.ir.util.getArguments
+import org.jetbrains.kotlin.ir.util.isInlineConstructor
 import org.jetbrains.kotlin.ir.util.needsInlining
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
@@ -130,7 +131,7 @@ internal class FunctionInlining(val context: Context) : IrElementTransformerVoid
             val endOffset = callee.endOffset
             val irBuilder = context.createIrBuilder(irReturnableBlockSymbol, startOffset, endOffset)
 
-            if (descriptor.isInlineConstructor) {
+            if (callee.isInlineConstructor) {
                 // Copier sets parent to be the current function but
                 // constructor's parent cannot be a function.
                 copiedCallee.parent = callee.parent

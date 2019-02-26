@@ -70,10 +70,6 @@ internal fun IrSimpleFunction.resolveFakeOverride(allowAbstract: Boolean = false
     return realSupers.first { allowAbstract || it.modality != Modality.ABSTRACT }
 }
 
-// TODO: don't forget to remove descriptor access here.
-internal val IrFunction.isTypedIntrinsic: Boolean
-    get() = this.descriptor.isTypedIntrinsic
-
 internal val IrDeclaration.isFrozen: Boolean
     get() = this.descriptor.isFrozen
 

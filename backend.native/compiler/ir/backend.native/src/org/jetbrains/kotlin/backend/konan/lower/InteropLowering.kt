@@ -847,7 +847,7 @@ private class InteropTransformer(val context: Context, val irFile: IrFile) : IrB
             }
         }
 
-        if (function.descriptor.annotations.hasAnnotation(RuntimeNames.cCall)) {
+        if (function.annotations.hasAnnotation(RuntimeNames.cCall)) {
             context.llvmImports.add(function.descriptor.llvmSymbolOrigin)
             return generateWithStubs { generateCCall(expression, builder, isInvoke = false) }
         }

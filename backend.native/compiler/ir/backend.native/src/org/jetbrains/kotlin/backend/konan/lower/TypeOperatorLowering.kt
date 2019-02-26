@@ -7,6 +7,7 @@ package org.jetbrains.kotlin.backend.konan.lower
 
 import org.jetbrains.kotlin.backend.common.CommonBackendContext
 import org.jetbrains.kotlin.backend.common.FunctionLoweringPass
+import org.jetbrains.kotlin.backend.common.ir.ir2string
 import org.jetbrains.kotlin.backend.common.lower.at
 import org.jetbrains.kotlin.backend.common.lower.createIrBuilder
 import org.jetbrains.kotlin.backend.common.lower.irBlock
@@ -82,9 +83,14 @@ private class TypeOperatorTransformer(val context: CommonBackendContext, val fun
 //        assert (!TypeUtils.hasNullableSuperType(typeOperand)) // So that `isNullable()` <=> `isMarkedNullable`.
 
         // TODO: consider the case when expression type is wrong e.g. due to generics-related unchecked casts.
+        //println(ir2string(expression))
+        //println(ir2string(expression.argument))
+
 
         return when {
-            expression.argument.type.isSubtypeOf(typeOperand) -> expression.argument
+            // TODO: we don't have pure IR isSubtypeOf implementation.
+            // We have to convert to KotlinTypes, which is a bad thing for wrapped descriptors.
+            //expression.argument.type.isSubtypeOf(typeOperand) -> expression.argument
 
             expression.argument.type.containsNull() -> {
                 with (builder) {

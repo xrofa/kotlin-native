@@ -213,7 +213,7 @@ internal class VarargInjectionLowering constructor(val context: KonanBackendCont
 
     inner class ReferenceArrayHandle : ArrayHandle(symbols.array) {
         override fun createArray(builder: IrBuilderWithScope, elementType: IrType, size: IrExpression): IrExpression {
-            return builder.irCall(singleParameterConstructor).apply {
+            return builder.irConstructorCall(singleParameterConstructor).apply {
                 putTypeArgument(0, elementType)
                 putValueArgument(0, size)
             }
@@ -224,7 +224,7 @@ internal class VarargInjectionLowering constructor(val context: KonanBackendCont
         : ArrayHandle(symbols.primitiveArrays[primitiveType]!!) {
 
         override fun createArray(builder: IrBuilderWithScope, elementType: IrType, size: IrExpression): IrExpression {
-            return builder.irCall(singleParameterConstructor).apply {
+            return builder.irConstructorCall(singleParameterConstructor).apply {
                 putValueArgument(0, size)
             }
         }
@@ -237,7 +237,7 @@ internal class VarargInjectionLowering constructor(val context: KonanBackendCont
 
         override fun createArray(builder: IrBuilderWithScope, elementType: IrType, size: IrExpression): IrExpression {
             val wrappedArray = wrappedArrayHandle.createArray(builder, elementType, size)
-            return builder.irCall(singleParameterConstructor).apply {
+            return builder.irConstructorCall(singleParameterConstructor).apply {
                 putValueArgument(0, wrappedArray)
             }
         }

@@ -5,12 +5,13 @@
 
 package org.jetbrains.kotlin.backend.konan
 
+import org.jetbrains.kotlin.backend.konan.irasdescriptors.hasAnnotation
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.name.FqName
 
 internal fun IrClass.isNonGeneratedAnnotation(): Boolean =
         this.kind == ClassKind.ANNOTATION_CLASS &&
-                !this.descriptor.annotations.hasAnnotation(serialInfoAnnotationFqName)
+                !this.hasAnnotation(serialInfoAnnotationFqName)
 
 private val serialInfoAnnotationFqName = FqName("kotlinx.serialization.SerialInfo")
