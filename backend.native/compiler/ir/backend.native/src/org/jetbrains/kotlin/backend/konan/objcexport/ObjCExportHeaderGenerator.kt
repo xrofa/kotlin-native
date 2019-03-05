@@ -8,20 +8,23 @@ package org.jetbrains.kotlin.backend.konan.objcexport
 import org.jetbrains.kotlin.backend.konan.*
 import org.jetbrains.kotlin.backend.konan.descriptors.*
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns
+import org.jetbrains.kotlin.builtins.KotlinBuiltIns.isAny
 import org.jetbrains.kotlin.descriptors.*
-import org.jetbrains.kotlin.incremental.components.NoLookupLocation
 import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.resolve.constants.ArrayValue
 import org.jetbrains.kotlin.resolve.constants.KClassValue
 import org.jetbrains.kotlin.resolve.descriptorUtil.*
 import org.jetbrains.kotlin.resolve.scopes.MemberScope
+import org.jetbrains.kotlin.types.ErrorUtils
 import org.jetbrains.kotlin.types.KotlinType
 import org.jetbrains.kotlin.types.TypeUtils
 import org.jetbrains.kotlin.types.typeUtil.supertypes
 import org.jetbrains.kotlin.utils.addIfNotNull
 
 interface ObjCExportTranslator {
+    fun generateBaseDeclarations(): List<ObjCTopLevel<*>>
+    fun getClassIfExtension(receiverType: KotlinType): ClassDescriptor?
     fun translateFile(file: SourceFile, declarations: List<CallableMemberDescriptor>): ObjCInterface
     fun translateClass(descriptor: ClassDescriptor): ObjCInterface
     fun translateInterface(descriptor: ClassDescriptor): ObjCProtocol
@@ -38,40 +41,114 @@ interface ObjCExportWarningCollector {
     }
 }
 
-fun createObjCExportTranslator(
-        builtIns: KotlinBuiltIns,
-        moduleDescriptor: ModuleDescriptor,
-        exportedDependencies: List<ModuleDescriptor>,
-        warningCollector: ObjCExportWarningCollector,
-        topLevelNamePrefix: String = moduleDescriptor.namePrefix
-): ObjCExportTranslator {
-    val mapper = ObjCExportMapper()
-    val namer = ObjCExportNamerImpl(
-            (exportedDependencies + moduleDescriptor).toSet(),
-            builtIns,
-            mapper,
-            topLevelNamePrefix,
-            local = true
-    )
-
-    return ObjCExportTranslatorImpl(
-            null,
-            builtIns,
-            mapper,
-            namer,
-            warningCollector
-    )
-}
-
 internal class ObjCExportTranslatorImpl(
         private val generator: ObjCExportHeaderGenerator?,
-        val builtIns: KotlinBuiltIns,
         val mapper: ObjCExportMapper,
         val namer: ObjCExportNamer,
         val warningCollector: ObjCExportWarningCollector
 ) : ObjCExportTranslator {
 
     private val kotlinAnyName = namer.kotlinAnyName
+
+    override fun generateBaseDeclarations(): List<ObjCTopLevel<*>> {
+        val stubs = mutableListOf<ObjCTopLevel<*>>()
+
+        stubs.add(objCInterface(namer.kotlinAnyName, superClass = "NSObject", members = buildMembers {
+            +ObjCMethod(null, true, ObjCInstanceType, listOf("init"), emptyList(), listOf("unavailable"))
+            +ObjCMethod(null, false, ObjCInstanceType, listOf("new"), emptyList(), listOf("unavailable"))
+            +ObjCMethod(null, false, ObjCVoidType, listOf("initialize"), emptyList(), listOf("objc_requires_super"))
+        }))
+
+        // TODO: add comment to the header.
+        stubs.add(ObjCInterfaceImpl(
+                namer.kotlinAnyName.objCName,
+                superProtocols = listOf("NSCopying"),
+                categoryName = "${namer.kotlinAnyName.objCName}Copying"
+        ))
+
+        // TODO: only if appears
+        stubs.add(objCInterface(
+                namer.mutableSetName,
+                generics = listOf("ObjectType"),
+                superClass = "NSMutableSet<ObjectType>"
+        ))
+
+        // TODO: only if appears
+        stubs.add(objCInterface(
+                namer.mutableMapName,
+                generics = listOf("KeyType", "ObjectType"),
+                superClass = "NSMutableDictionary<KeyType, ObjectType>"
+        ))
+
+        stubs.add(ObjCInterfaceImpl("NSError", categoryName = "NSErrorKotlinException", members = buildMembers {
+            +ObjCProperty("kotlinException", null, ObjCNullableReferenceType(ObjCIdType), listOf("readonly"))
+        }))
+
+        genKotlinNumbers(stubs)
+
+        return stubs
+    }
+
+    private fun genKotlinNumbers(stubs: MutableList<ObjCTopLevel<*>>) {
+        val members = buildMembers {
+            NSNumberKind.values().forEach {
+                +nsNumberFactory(it, listOf("unavailable"))
+            }
+            NSNumberKind.values().forEach {
+                +nsNumberInit(it, listOf("unavailable"))
+            }
+        }
+        stubs.add(objCInterface(
+                namer.kotlinNumberName,
+                superClass = "NSNumber",
+                members = members
+        ))
+
+        NSNumberKind.values().forEach {
+            if (it.mappedKotlinClassId != null) {
+                stubs += genKotlinNumber(it.mappedKotlinClassId, it)
+            }
+        }
+    }
+
+    private fun genKotlinNumber(kotlinClassId: ClassId, kind: NSNumberKind): ObjCInterface {
+        val name = namer.numberBoxName(kotlinClassId)
+
+        val members = buildMembers {
+            +nsNumberFactory(kind)
+            +nsNumberInit(kind)
+        }
+        return objCInterface(
+                name,
+                superClass = namer.kotlinNumberName.objCName,
+                members = members
+        )
+    }
+
+    private fun nsNumberInit(kind: NSNumberKind, attributes: List<String> = emptyList()): ObjCMethod {
+        return ObjCMethod(
+                null,
+                false,
+                ObjCInstanceType,
+                listOf(kind.factorySelector),
+                listOf(ObjCParameter("value", null, kind.objCType)),
+                attributes
+        )
+    }
+
+    private fun nsNumberFactory(kind: NSNumberKind, attributes: List<String> = emptyList()): ObjCMethod {
+        return ObjCMethod(
+                null,
+                true,
+                ObjCInstanceType,
+                listOf(kind.initSelector),
+                listOf(ObjCParameter("value", null, kind.objCType)),
+                attributes
+        )
+    }
+
+    override fun getClassIfExtension(receiverType: KotlinType): ClassDescriptor? =
+            mapper.getClassIfCategory(receiverType)
 
     internal fun translateKotlinObjCClassAsUnavailableStub(descriptor: ClassDescriptor): ObjCInterface = objCInterface(
             namer.getClassOrProtocolName(descriptor),
@@ -102,6 +179,9 @@ internal class ObjCExportTranslatorImpl(
 
     private fun translateClassOrInterfaceName(descriptor: ClassDescriptor): ObjCExportNamer.ClassOrProtocolName {
         assert(mapper.shouldBeExposed(descriptor))
+        if (ErrorUtils.isError(descriptor)) {
+            return ObjCExportNamer.ClassOrProtocolName("Unresolved", "Unresolved") // FIXME
+        }
 
         return namer.getClassOrProtocolName(descriptor)
     }
@@ -135,7 +215,7 @@ internal class ObjCExportTranslatorImpl(
         val members = buildMembers {
             translatePlainMembers(declarations)
         }
-        return ObjCInterface(name, categoryName = "Extensions", members = members)
+        return ObjCInterfaceImpl(name, categoryName = "Extensions", members = members)
     }
 
     override fun translateFile(file: SourceFile, declarations: List<CallableMemberDescriptor>): ObjCInterface {
@@ -149,7 +229,7 @@ internal class ObjCExportTranslatorImpl(
                 name,
                 superClass = namer.kotlinAnyName.objCName,
                 members = members,
-                attributes = listOf("objc_subclassing_restricted")
+                attributes = listOf(OBJC_SUBCLASSING_RESTRICTED)
         )
     }
 
@@ -233,7 +313,7 @@ internal class ObjCExportTranslatorImpl(
             translateClassMembers(descriptor)
         }
 
-        val attributes = if (descriptor.isFinalOrEnum) listOf("objc_subclassing_restricted") else emptyList()
+        val attributes = if (descriptor.isFinalOrEnum) listOf(OBJC_SUBCLASSING_RESTRICTED) else emptyList()
 
         return objCInterface(
                 name,
@@ -513,9 +593,8 @@ internal class ObjCExportTranslatorImpl(
 
     private val methodsWithThrowAnnotationConsidered = mutableSetOf<FunctionDescriptor>()
 
-    private val uncheckedExceptionClasses = listOf("Error", "RuntimeException").map {
-        builtIns.builtInsPackageScope
-                .getContributedClassifier(Name.identifier(it), NoLookupLocation.FROM_BACKEND) as ClassDescriptor
+    private val uncheckedExceptionClasses = listOf("kotlin.Error", "kotlin.RuntimeException").map {
+        ClassId.topLevel(FqName(it))
     }
 
     private fun exportThrown(method: FunctionDescriptor) {
@@ -534,7 +613,7 @@ internal class ObjCExportTranslatorImpl(
         for (argument in arguments) {
             val classDescriptor = TypeUtils.getClassDescriptor((argument as KClassValue).getArgumentType(method.module)) ?: continue
 
-            uncheckedExceptionClasses.firstOrNull { classDescriptor.isSubclassOf(it) }?.let {
+            classDescriptor.getAllSuperClassifiers().firstOrNull { it.classId in uncheckedExceptionClasses }?.let {
                 warningCollector.reportWarning(method,
                         "Method is declared to throw ${classDescriptor.fqNameSafe}, " +
                                 "but instances of ${it.fqNameSafe} and its subclasses aren't propagated " +
@@ -613,7 +692,7 @@ internal class ObjCExportTranslatorImpl(
         // TODO: translate `where T : BaseClass, T : SomeInterface` to `BaseClass* <SomeInterface>`
 
         // TODO: expose custom inline class boxes properly.
-        if (classDescriptor == builtIns.any || classDescriptor.classId in mapper.hiddenTypes || classDescriptor.isInlined()) {
+        if (isAny(classDescriptor) || classDescriptor.classId in mapper.hiddenTypes || classDescriptor.isInlined()) {
             return ObjCIdType
         }
 
@@ -677,7 +756,6 @@ internal class ObjCExportTranslatorImpl(
 
 abstract class ObjCExportHeaderGenerator internal constructor(
         val moduleDescriptors: List<ModuleDescriptor>,
-        val builtIns: KotlinBuiltIns,
         internal val mapper: ObjCExportMapper,
         val namer: ObjCExportNamer
 ) {
@@ -695,9 +773,8 @@ abstract class ObjCExportHeaderGenerator internal constructor(
             mapper: ObjCExportMapper
     ) : this(
             moduleDescriptors,
-            builtIns,
             mapper,
-            ObjCExportNamerImpl(moduleDescriptors.toSet(), builtIns, mapper, topLevelNamePrefix, local = false)
+            ObjCExportNamerImpl.global(moduleDescriptors, mapper, topLevelNamePrefix, builtIns)
     )
 
     constructor(
@@ -719,7 +796,7 @@ abstract class ObjCExportHeaderGenerator internal constructor(
     private val protocolForwardDeclarations = linkedSetOf<String>()
     private val extraClassesToTranslate = mutableSetOf<ClassDescriptor>()
 
-    private val translator = ObjCExportTranslatorImpl(this, builtIns, mapper, namer,
+    private val translator = ObjCExportTranslatorImpl(this, mapper, namer,
             object : ObjCExportWarningCollector {
                 override fun reportWarning(text: String) =
                         this@ObjCExportHeaderGenerator.reportWarning(text)
@@ -766,38 +843,7 @@ abstract class ObjCExportHeaderGenerator internal constructor(
         // TODO: make the translation order stable
         // to stabilize name mangling.
 
-        stubs.add(objCInterface(namer.kotlinAnyName, superClass = "NSObject", members = buildMembers {
-            +ObjCMethod(null, true, ObjCInstanceType, listOf("init"), emptyList(), listOf("unavailable"))
-            +ObjCMethod(null, false, ObjCInstanceType, listOf("new"), emptyList(), listOf("unavailable"))
-            +ObjCMethod(null, false, ObjCVoidType, listOf("initialize"), emptyList(), listOf("objc_requires_super"))
-        }))
-
-        // TODO: add comment to the header.
-        stubs.add(ObjCInterface(
-                namer.kotlinAnyName.objCName,
-                superProtocols = listOf("NSCopying"),
-                categoryName = "${namer.kotlinAnyName.objCName}Copying"
-        ))
-
-        // TODO: only if appears
-        stubs.add(objCInterface(
-                namer.mutableSetName,
-                generics = listOf("ObjectType"),
-                superClass = "NSMutableSet<ObjectType>"
-        ))
-
-        // TODO: only if appears
-        stubs.add(objCInterface(
-                namer.mutableMapName,
-                generics = listOf("KeyType", "ObjectType"),
-                superClass = "NSMutableDictionary<KeyType, ObjectType>"
-        ))
-
-        stubs.add(ObjCInterface("NSError", categoryName = "NSErrorKotlinException", members = buildMembers {
-            +ObjCProperty("kotlinException", null, ObjCNullableReferenceType(ObjCIdType), listOf("readonly"))
-        }))
-
-        genKotlinNumbers()
+        stubs += translator.generateBaseDeclarations()
 
         val packageFragments = moduleDescriptors.flatMap { it.getPackageFragments() }
 
@@ -862,64 +908,6 @@ abstract class ObjCExportHeaderGenerator internal constructor(
         return stubs
     }
 
-    private fun genKotlinNumbers() {
-        val members = buildMembers {
-            NSNumberKind.values().forEach {
-                +nsNumberFactory(it, listOf("unavailable"))
-            }
-            NSNumberKind.values().forEach {
-                +nsNumberInit(it, listOf("unavailable"))
-            }
-        }
-        stubs.add(objCInterface(
-                namer.kotlinNumberName,
-                superClass = "NSNumber",
-                members = members
-        ))
-
-        NSNumberKind.values().forEach {
-            if (it.mappedKotlinClassId != null) {
-                stubs += genKotlinNumber(it.mappedKotlinClassId, it)
-            }
-        }
-    }
-
-    private fun genKotlinNumber(kotlinClassId: ClassId, kind: NSNumberKind): ObjCInterface {
-        val name = namer.numberBoxName(kotlinClassId)
-
-        val members = buildMembers {
-            +nsNumberFactory(kind)
-            +nsNumberInit(kind)
-        }
-        return objCInterface(
-                name,
-                superClass = namer.kotlinNumberName.objCName,
-                members = members
-        )
-    }
-
-    private fun nsNumberInit(kind: NSNumberKind, attributes: List<String> = emptyList()): ObjCMethod {
-        return ObjCMethod(
-                null,
-                false,
-                ObjCInstanceType,
-                listOf(kind.factorySelector),
-                listOf(ObjCParameter("value", null, kind.objCType)),
-                attributes
-        )
-    }
-
-    private fun nsNumberFactory(kind: NSNumberKind, attributes: List<String> = emptyList()): ObjCMethod {
-        return ObjCMethod(
-                null,
-                true,
-                ObjCInstanceType,
-                listOf(kind.initSelector),
-                listOf(ObjCParameter("value", null, kind.objCType)),
-                attributes
-        )
-    }
-
     private fun generateFile(sourceFile: SourceFile, declarations: List<CallableMemberDescriptor>) {
         stubs.add(translator.translateFile(sourceFile, declarations))
     }
@@ -961,7 +949,7 @@ private fun objCInterface(
         superProtocols: List<String> = emptyList(),
         members: List<Stub<*>> = emptyList(),
         attributes: List<String> = emptyList()
-): ObjCInterface = ObjCInterface(
+): ObjCInterface = ObjCInterfaceImpl(
         name.objCName,
         generics,
         descriptor,
@@ -978,7 +966,7 @@ private fun objCProtocol(
         superProtocols: List<String>,
         members: List<Stub<*>>,
         attributes: List<String> = emptyList()
-): ObjCProtocol = ObjCProtocol(
+): ObjCProtocol = ObjCProtocolImpl(
         name.objCName,
         descriptor,
         superProtocols,
@@ -986,10 +974,12 @@ private fun objCProtocol(
         attributes + name.toNameAttributes()
 )
 
-private fun ObjCExportNamer.ClassOrProtocolName.toNameAttributes(): List<String> = listOfNotNull(
+internal fun ObjCExportNamer.ClassOrProtocolName.toNameAttributes(): List<String> = listOfNotNull(
         binaryName.takeIf { it != objCName }?.let { objcRuntimeNameAttribute(it) },
         swiftName.takeIf { it != objCName }?.let { swiftNameAttribute(it) }
 )
 
 private fun swiftNameAttribute(swiftName: String) = "swift_name(\"$swiftName\")"
 private fun objcRuntimeNameAttribute(name: String) = "objc_runtime_name(\"$name\")"
+
+internal const val OBJC_SUBCLASSING_RESTRICTED = "objc_subclassing_restricted"

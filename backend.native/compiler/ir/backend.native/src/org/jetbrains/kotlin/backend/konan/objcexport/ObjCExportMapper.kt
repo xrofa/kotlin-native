@@ -48,6 +48,10 @@ internal fun ObjCExportMapper.getClassIfCategory(descriptor: CallableMemberDescr
 
     val extensionReceiverType = descriptor.extensionReceiverParameter?.type ?: return null
 
+    return getClassIfCategory(extensionReceiverType)
+}
+
+internal fun ObjCExportMapper.getClassIfCategory(extensionReceiverType: KotlinType): ClassDescriptor? {
     // FIXME: this code must rely on type mapping instead of copying its logic.
 
     if (extensionReceiverType.isObjCObjectType()) return null

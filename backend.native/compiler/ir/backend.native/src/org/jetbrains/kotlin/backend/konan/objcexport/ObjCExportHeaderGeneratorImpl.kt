@@ -16,7 +16,7 @@ internal class ObjCExportHeaderGeneratorImpl(
         moduleDescriptors: List<ModuleDescriptor>,
         mapper: ObjCExportMapper,
         namer: ObjCExportNamer
-) : ObjCExportHeaderGenerator(moduleDescriptors, context.builtIns, mapper, namer) {
+) : ObjCExportHeaderGenerator(moduleDescriptors, mapper, namer) {
 
     override fun reportWarning(text: String) {
         context.reportCompilationWarning(text)

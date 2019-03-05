@@ -35,12 +35,11 @@ internal class ObjCExport(val codegen: CodeGenerator) {
         val mapper = ObjCExportMapper()
         val exportedDependencies = if (produceFramework) context.getExportedDependencies() else emptyList()
         val moduleDescriptors = listOf(context.moduleDescriptor) + exportedDependencies
-        val namer = ObjCExportNamerImpl(
-                moduleDescriptors.toSet(),
-                context.moduleDescriptor.builtIns,
+        val namer = ObjCExportNamerImpl.global(
+                moduleDescriptors,
                 mapper,
                 context.moduleDescriptor.namePrefix,
-                local = false
+                context.moduleDescriptor.builtIns
         )
 
         val objCCodeGenerator = ObjCExportCodeGenerator(codegen, namer, mapper)
