@@ -1,5 +1,7 @@
 package org.jetbrains.kotlin.backend.konan.serialization
 
+import org.jetbrains.kotlin.backend.common.descriptors.WrappedClassConstructorDescriptor
+import org.jetbrains.kotlin.backend.common.descriptors.WrappedSimpleFunctionDescriptor
 import org.jetbrains.kotlin.backend.common.serialization.DescriptorReferenceDeserializer
 import org.jetbrains.kotlin.backend.common.serialization.DescriptorUniqIdAware
 import org.jetbrains.kotlin.backend.common.serialization.UniqId
@@ -55,6 +57,18 @@ class KonanDescriptorReferenceDeserializer(
         } else {
             val clazz = currentModule.findClassAcrossModuleDependencies(ClassId(packageFqName, classFqName, false))!!
             Pair(clazz, clazz.unsubstitutedMemberScope.getContributedDescriptors() + clazz.getConstructors())
+        }
+
+        if (clazz?.kind == ClassKind.ENUM_ENTRY && !isFakeOverride) {
+            return if (name == "<init>") {
+                object : WrappedClassConstructorDescriptor() {
+                    override fun getContainingDeclaration(): ClassDescriptor = clazz
+                }
+            } else {
+                object : WrappedSimpleFunctionDescriptor() {
+                    override fun getContainingDeclaration(): DeclarationDescriptor = clazz
+                }
+            }
         }
 
         if (packageFqNameString.startsWith("cnames.") || packageFqNameString.startsWith("objcnames.")) {
