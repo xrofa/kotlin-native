@@ -31,7 +31,7 @@ def log(msg):
         print(msg)
 
 def lldb_val_to_ptr(lldb_val):
-    addr = lldb_val.GetValueAsUnsigned()
+    addr = lldb_val.GetValueAsSigned()
     return '((struct ObjHeader *) {:#x})'.format(addr)
 
 
@@ -76,17 +76,13 @@ SYNTHETIC_OBJECT_LAYOUT_CACHE = {}
 
 def kotlin_object_type_summary(lldb_val, internal_dict):
     """Hook that is run by lldb to display a Kotlin object."""
-    log("kotlin_object_type_summary({:#x})".format(lldb_val.unsigned))
-    fallback = lldb_val.GetValue()
     if str(lldb_val.type) != "struct ObjHeader *":
-        return fallback
+        if lldb_val.GetValue() is None:
+            return NULL
+        return lldb_val.GetValueAsSigned()
 
     if not check_type_info(lldb_val):
         return NULL
-
-    ptr = lldb_val_to_ptr(lldb_val)
-    if ptr is None:
-        return fallback
 
     return select_provider(lldb_val).to_string()
 

@@ -57,7 +57,7 @@ class LldbTests {
             (char) a = '\x01'
             (int) b = 2
             (long) c = -3
-            (unsigned char) d = 'c'
+            (char) d = 'c'
             (bool) e = true
     """)
 
