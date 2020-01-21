@@ -300,9 +300,9 @@ def createTestTasks(File testRoot, Class<Task> taskType) {
             return
         }
 
-        def taskDirectory = project.relativePath(it)
+        def taskDirectory = project.relativePath(it).substring("build/".length())
         if (!isExcluded(taskDirectory)) {
-            def taskName = taskDirectory.substring("build/".length()).replaceAll("[-/\\\\]", '_')
+            def taskName = taskDirectory.replaceAll("[-/\\\\]", '_')
             project.tasks.register(taskName, taskType) {
                 it.groupDirectory = taskDirectory
                 it.finalizedBy resultsTask

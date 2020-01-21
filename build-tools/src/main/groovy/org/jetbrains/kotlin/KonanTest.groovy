@@ -58,7 +58,6 @@ class RunExternalTestGroup extends JavaExec {
     }
 
     RunExternalTestGroup() {
-        // We don't build the compiler if a custom dist path is specified.
         UtilsKt.dependsOnDist(this)
     }
 
@@ -204,9 +203,11 @@ class RunExternalTestGroup extends JavaExec {
     @Input
     public def enableTwoStageCompilation = false
 
+    @Input
     def groupDirectory = "."
-    def outputSourceSetName = "testOutputExternal"
+
     String filter = project.findProperty("filter")
+
     def testGroupReporter = new KonanTestGroupReportEnvironment(project)
 
     void parseLanguageFlags() {
@@ -406,7 +407,7 @@ fun runTest() {
     }
 
     static def excludeList = [
-            "build/external/compiler/codegen/boxInline/anonymousObject/kt8133.kt"  // KT-34066
+            "external/compiler/codegen/boxInline/anonymousObject/kt8133.kt"  // KT-34066
     ]
 
     boolean isEnabledForNativeBackend(String fileName) {
@@ -463,7 +464,7 @@ fun runTest() {
         def outputRootDirectory = outputDirectory
 
         // Form the test list.
-        List<File> ktFiles = project.file(groupDirectory)
+        List<File> ktFiles = project.buildDir.toPath().resolve(groupDirectory).toFile()
                 .listFiles({
                     it.isFile() && it.name.endsWith(".kt")
                 } as FileFilter)
