@@ -328,7 +328,7 @@ open class KonanStandaloneTest : KonanLocalTest() {
     var flags: List<String> = listOf()
         get() = if (enableKonanAssertions) field + "-ea" else field
 
-    fun getSources() = buildCompileList(project, source, outputDirectory)
+    fun getSources() = buildCompileList(project, source, outputDirectory).map { it.path }
 }
 
 /**

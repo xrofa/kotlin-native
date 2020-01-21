@@ -19,8 +19,8 @@ private val FILE_OR_MODULE_PATTERN: Pattern = Pattern.compile("(?://\\s*MODULE:\
  *
  * @return list of file names to be compiled
  */
-fun buildCompileList(project: Project, source: String, outputDirectory: String): List<String> {
-    val result = mutableListOf<String>()
+fun buildCompileList(project: Project, source: String, outputDirectory: String): List<TestFile> {
+    val result = mutableListOf<TestFile>()
     val srcFile = project.file(source)
     // Remove diagnostic parameters in external tests.
     val srcText = srcFile.readText().replace(Regex("<!.*?!>(.*?)<!>")) { match -> match.groupValues[1] }
@@ -28,18 +28,16 @@ fun buildCompileList(project: Project, source: String, outputDirectory: String):
     if (srcText.contains("// WITH_COROUTINES")) {
         val coroutineHelpers = "$outputDirectory/helpers.kt"
         val helper = TestFile("helpers.kt", coroutineHelpers, createTextForHelpers(true))
-        helper.create()
-        result.add(coroutineHelpers)
+        result.add(helper)
     }
 
     val matcher = FILE_OR_MODULE_PATTERN.matcher(srcText)
     if (!matcher.find()) {
         // There is only one file in the input
-        registerKtFile(result, TestFile(srcFile.name, "$outputDirectory/${srcFile.name}", srcText))
+        result.add(TestFile(srcFile.name, "$outputDirectory/${srcFile.name}", srcText))
     } else {
         // There are several files
         var processedChars = 0
-        var hasModules = false
         var module: TestModule? = null
         while (true) {
             var moduleName = matcher.group(1)
@@ -48,7 +46,6 @@ fun buildCompileList(project: Project, source: String, outputDirectory: String):
 
             if (moduleName != null) {
                 moduleName = moduleName.trim { it <= ' ' }
-                hasModules = true
                 module = TestModule(moduleName, parseModuleList(moduleDependencies), parseModuleList(moduleFriends))
             }
 
@@ -60,24 +57,29 @@ fun buildCompileList(project: Project, source: String, outputDirectory: String):
             val fileText = srcText.substring(start, end)
             processedChars = end
             val testFile = TestFile(fileName, filePath, fileText, module)
-            registerKtFile(result, testFile)
-            testFile.create()
+            module?.testFiles?.add(testFile)
+            result.add(testFile)
             if (!nextFileExists) break
         }
     }
     return result
 }
 
-class TestModule(val name: String, val dependencies: List<String>, val friends: List<String>) {
-    val testFiles = mutableListOf<TestFile>()
-}
+data class TestModule(
+        val name: String,
+        val dependencies: List<String>,
+        val friends: List<String>,
+        val testFiles: MutableList<TestFile> = mutableListOf()
+)
 
-class TestFile(val name: String, val path: String, val text: String, val module: TestModule? = null) {
-    fun create() = Paths.get(path).run {
-        parent.toFile()
-                .takeUnless { it.exists() }
-                ?.mkdirs()
-        toFile().writeText(text)
+data class TestFile(val name: String, val path: String, val text: String, val module: TestModule? = null) {
+    init {
+        Paths.get(path).run {
+            parent.toFile()
+                    .takeUnless { it.exists() }
+                    ?.mkdirs()
+            toFile().writeText(text)
+        }
     }
 }
 
@@ -85,10 +87,4 @@ fun parseModuleList(dependencies: String?): List<String> {
     return dependencies
             ?.split(Pattern.compile(MODULE_DELIMITER), 0)
             ?: emptyList()
-}
-
-internal fun registerKtFile(sourceFiles: MutableList<String>, file: TestFile) {
-    if (file.path.endsWith(".kt")) {
-        sourceFiles.add(file.path)
-    }
 }
