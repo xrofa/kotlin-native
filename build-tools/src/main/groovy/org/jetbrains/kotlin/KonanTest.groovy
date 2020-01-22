@@ -212,7 +212,7 @@ class RunExternalTestGroup extends JavaExec {
     def testGroupReporter = new KonanTestGroupReportEnvironment(project)
 
     void parseLanguageFlags(String src) {
-        def text = project.file(src).text
+        def text = project.buildDir.toPath().resolve(src).text
         def languageSettings = findLinesWithPrefixesRemoved(text, "// !LANGUAGE: ")
         if (languageSettings.size() != 0) {
             languageSettings.forEach { line ->
@@ -414,7 +414,7 @@ fun runTest() {
     ]
 
     boolean isEnabledForNativeBackend(String fileName) {
-        def text = project.file(fileName).text
+        def text = project.buildDir.toPath().resolve(fileName).text
 
         if (excludeList.contains(fileName.replace(File.separator, "/"))) return false
 
@@ -481,7 +481,7 @@ fun runTest() {
             flags = (flags ?: []) + "-tr"
             def compileList = []
             ktFiles.each {
-                def src = project.relativePath(it)
+                def src = project.buildDir.relativePath(it)
                 if (isEnabledForNativeBackend(src)) {
                     // Create separate output directory for each test in the group.
                     project.file("$outputDirectory/${it.name}").mkdirs()
