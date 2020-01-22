@@ -263,12 +263,12 @@ class RunExternalTestGroup extends JavaExec {
         def boxPattern = ~/(?m)fun\s+box\s*\(\s*\)/
         def classPattern = ~/.*(class|object|enum|interface)\s+(${identifier}*).*/
 
-        def sourceName = "_" + normalize(project.file(src).name)
+        def sourceName = "_" + normalize(project.buildDir.toPath().resolve(src).toFile().name)
         def packages = new LinkedHashSet<String>()
         def imports = []
         def classes = []
 
-        def filesToCompile = TestDirectivesKt.buildCompileList(project, src, "$outputDirectory/$src")
+        def filesToCompile = TestDirectivesKt.buildCompileList(project, "build/$src", "$outputDirectory/$src")
                 .stream()
                 .map { f -> f.path }
                 .collect(Collectors.toList())
@@ -512,7 +512,7 @@ fun runTest() {
             // Run the tests.
             arguments = (arguments ?: []) + "--ktest_logger=SILENT"
             ktFiles.each { file ->
-                def src = project.relativePath(file)
+                def src = project.buildDir.relativePath(file)
                 def savedArgs = arguments
                 arguments += "--ktest_filter=_${normalize(file.name)}.*"
                 use(KonanTestSuiteReportKt) {
