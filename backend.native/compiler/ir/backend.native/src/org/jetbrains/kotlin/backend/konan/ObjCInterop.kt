@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION")
 /*
  * Copyright 2010-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
  * that can be found in the LICENSE file.
@@ -80,6 +81,7 @@ fun IrClass.isObjCProtocolClass(): Boolean =
 fun ClassDescriptor.isObjCProtocolClass(): Boolean =
         this.fqNameSafe == objCProtocolFqName
 
+@Suppress("DEPRECATION")
 fun FunctionDescriptor.isObjCClassMethod() =
         this.containingDeclaration.let { it is ClassDescriptor && it.isObjCClass() }
 

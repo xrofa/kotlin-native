@@ -484,6 +484,7 @@ private class InteropLoweringPart1(val context: Context) : BaseInteropIrTransfor
         var hasObjCClassSupertype = false
         irClass.descriptor.defaultType.constructor.supertypes.forEach {
             val descriptor = it.constructor.declarationDescriptor as ClassDescriptor
+            @Suppress("DEPRECATION")
             if (!descriptor.isObjCClass()) {
                 context.reportCompilationError(
                         "Mixing Kotlin and Objective-C supertypes is not supported",

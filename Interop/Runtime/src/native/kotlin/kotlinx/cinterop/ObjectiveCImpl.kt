@@ -92,6 +92,7 @@ class ObjCNotImplementedVar<T : Any?>(rawPtr: NativePtr) : CVariable(rawPtr) {
 
 var <T : Any?> ObjCNotImplementedVar<T>.value: T
     get() = TODO()
+    @Suppress("UNUSED_PARAMETER")
     set(value) = TODO()
 
 typealias ObjCStringVarOf<T> = ObjCNotImplementedVar<T>

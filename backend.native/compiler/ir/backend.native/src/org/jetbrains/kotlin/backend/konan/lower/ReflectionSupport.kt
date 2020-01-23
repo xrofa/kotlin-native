@@ -104,6 +104,7 @@ internal class KTypeGenerator(
 internal fun IrBuilderWithScope.irKClass(context: KonanBackendContext, symbol: IrClassSymbol): IrExpression {
     val symbols = context.ir.symbols
     return when {
+        @Suppress("DEPRECATION")
         symbol.descriptor.isObjCClass() ->
             irKClassUnsupported(context, "KClass for Objective-C classes is not supported yet")
 

@@ -25,6 +25,7 @@ fun runTopLevelPhases(konanConfig: KonanConfig, environment: KotlinCoreEnvironme
     if (konanConfig.infoArgsOnly) return
 
     try {
+        @Suppress("UNCHECKED_CAST")
         (toplevelPhase as CompilerPhase<Context, Unit, Unit>).invokeToplevel(context.phaseConfig, context, Unit)
     } finally {
         context.disposeLlvm()

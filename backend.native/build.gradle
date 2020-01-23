@@ -56,6 +56,7 @@ compileCompilerKotlin {
     // but not for Kotlin.
     dependsOn('generateCompilerProto')
     kotlinOptions.jvmTarget = "1.8"
+    kotlinOptions.allWarningsAsErrors=true
 }
 
 compileCompilerJava {
@@ -205,7 +206,9 @@ targetList.each { target ->
             "-Djava.library.path=${project.buildDir}/nativelibs/$hostName",
     ]
 
-    def defaultArgs = ['-nopack', '-nostdlib', '-no-default-libs', '-no-endorsed-libs']
+    def defaultArgs = ['-nopack', '-nostdlib', '-no-default-libs', '-no-endorsed-libs',
+                       //Uncomment this '-Werror' when common stdlib will be ready
+    ]
     if (target != "wasm32") defaultArgs += '-g'
     def konanArgs = [*defaultArgs,
                      '-target', target,
@@ -222,7 +225,7 @@ targetList.each { target ->
                 '-Xmulti-platform', '-Xuse-experimental=kotlin.Experimental', '-XXLanguage:+InlineClasses',
                 '-Xuse-experimental=kotlin.contracts.ExperimentalContracts',
                 '-Xuse-experimental=kotlin.ExperimentalMultiplatform',
-                '-Xallow-result-return-type',
+                '-Xallow-result-return-type', '-Xopt-in=kotlin.RequiresOptIn',
                 commonSrc.absolutePath,
                 "-Xcommon-sources=${commonSrc.absolutePath}",
                 *stdLibSrc]

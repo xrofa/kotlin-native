@@ -178,6 +178,7 @@ internal class ObjCExportTranslatorImpl(
 
     private fun attributesForUnexposed(descriptor: ClassDescriptor): List<String> {
         val message = when {
+            @Suppress("DEPRECATION")
             descriptor.isKotlinObjCClass() -> "Kotlin subclass of Objective-C class "
             else -> ""
         } + "can't be imported"
@@ -201,7 +202,7 @@ internal class ObjCExportTranslatorImpl(
 
         return translateClassOrInterfaceName(descriptor).also {
             val objcName = forwardDeclarationObjcClassName(objcGenerics, descriptor, namer)
-            generator?.referenceClass(objcName, descriptor)
+            generator?.referenceClass(objcName)
         }
     }
 
@@ -211,7 +212,7 @@ internal class ObjCExportTranslatorImpl(
         generator?.requireClassOrInterface(descriptor)
 
         return translateClassOrInterfaceName(descriptor).also {
-            generator?.referenceProtocol(it.objCName, descriptor)
+            generator?.referenceProtocol(it.objCName)
         }
     }
 
@@ -765,6 +766,7 @@ internal class ObjCExportTranslatorImpl(
         if (descriptor.isObjCMetaClass()) return ObjCMetaClassType
         if (descriptor.isObjCProtocolClass()) return foreignClassType("Protocol")
 
+        @Suppress("DEPRECATION")
         if (descriptor.isExternalObjCClass() || descriptor.isObjCForwardDeclaration()) {
             return if (descriptor.isInterface) {
                 val name = descriptor.name.asString().removeSuffix("Protocol")
@@ -775,6 +777,7 @@ internal class ObjCExportTranslatorImpl(
             }
         }
 
+        @Suppress("DEPRECATION")
         if (descriptor.isKotlinObjCClass()) {
             return mapObjCObjectReferenceTypeIgnoringNullability(descriptor.getSuperClassOrAny())
         }
@@ -1060,11 +1063,11 @@ abstract class ObjCExportHeaderGenerator internal constructor(
         }
     }
 
-    internal fun referenceClass(objCName: String, descriptor: ClassDescriptor? = null) {
+    internal fun referenceClass(objCName: String) {
         classForwardDeclarations += objCName
     }
 
-    internal fun referenceProtocol(objCName: String, descriptor: ClassDescriptor? = null) {
+    internal fun referenceProtocol(objCName: String) {
         protocolForwardDeclarations += objCName
     }
 }

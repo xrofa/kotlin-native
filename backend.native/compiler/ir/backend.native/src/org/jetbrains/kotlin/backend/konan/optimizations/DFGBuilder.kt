@@ -132,8 +132,7 @@ private class ExpressionValuesExtractor(val context: Context,
                 else { // Propagate cast to sub-values.
                     forEachValue(expression.argument) { value ->
                         with(expression) {
-                            block(IrTypeOperatorCallImpl(startOffset, endOffset, type, operator, typeOperand,
-                                    typeOperand.classifierOrFail, value))
+                            block(IrTypeOperatorCallImpl(startOffset, endOffset, type, operator, typeOperand, value))
                         }
                     }
                 }

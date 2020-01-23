@@ -387,6 +387,7 @@ internal class Llvm(val context: Context, val llvmModule: LLVMModuleRef) {
         override fun nativeDependenciesAreUsed(library: KonanLibrary) = library in usedNativeDependencies
     }
 
+    @Suppress("UNCHECKED_CAST")
     val nativeDependenciesToLink: List<KonanLibrary> by lazy {
         context.config.resolvedLibraries
                 .getFullList(TopologicalLibraryOrder)
@@ -404,6 +405,7 @@ internal class Llvm(val context: Context, val llvmModule: LLVMModuleRef) {
         (nativeDependenciesToLink + cachedLibraries).distinct()
     }
 
+    @Suppress("UNCHECKED_CAST")
     val bitcodeToLink: List<KonanLibrary> by lazy {
         (context.config.resolvedLibraries.getFullList(TopologicalLibraryOrder) as List<KonanLibrary>)
                 .filter { shouldContainBitcode(it) }

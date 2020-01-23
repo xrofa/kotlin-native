@@ -163,6 +163,7 @@ private fun getFeaturedLibraries(
 ) : List<KonanLibrary> {
     val remainingFeaturedLibraries = featuredLibraryFiles.toMutableSet()
     val result = mutableListOf<KonanLibrary>()
+    @Suppress("UNCHECKED_CAST")
     val libraries = resolvedLibraries.getFullList(null) as List<KonanLibrary>
 
     for (library in libraries) {

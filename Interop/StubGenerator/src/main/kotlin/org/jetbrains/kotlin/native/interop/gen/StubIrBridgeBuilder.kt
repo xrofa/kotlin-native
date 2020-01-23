@@ -19,6 +19,7 @@ class BridgeBuilderResult(
 /**
  * Generates [NativeBridges] and corresponding function bodies and property accessors.
  */
+@Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
 class StubIrBridgeBuilder(
         private val context: StubIrContext,
         private val builderResult: StubIrBuilderResult) {

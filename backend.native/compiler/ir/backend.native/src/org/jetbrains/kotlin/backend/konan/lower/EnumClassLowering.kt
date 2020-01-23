@@ -23,6 +23,7 @@ import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin.ARGUMENTS_REORDERING_FOR_CALL
 import org.jetbrains.kotlin.ir.expressions.impl.*
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
+import org.jetbrains.kotlin.ir.symbols.impl.IrPropertySymbolImpl
 import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.*
@@ -253,6 +254,7 @@ internal class EnumClassLowering(val context: Context) : ClassLoweringPass {
 
             createValuesPropertyInitializer(enumEntries)
 
+            @Suppress("DEPRECATION")
             return IrPropertyImpl(startOffset, endOffset, DECLARATION_ORIGIN_ENUM,
                     false, loweredEnum.valuesField.descriptor, irField, getter, null).apply {
                 parent = implObject

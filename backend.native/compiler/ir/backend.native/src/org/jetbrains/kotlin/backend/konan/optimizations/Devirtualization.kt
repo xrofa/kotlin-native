@@ -1120,7 +1120,7 @@ internal object Devirtualization {
                             val arguments = listOf(castedReceiver) + node.arguments.drop(1)
 
                             val returnsNode = ordinaryNode { "VirtualCallReturns\$${function.symbol}" }
-                            callees.forEachIndexed { index, actualCallee ->
+                            callees.forEach { actualCallee ->
                                 doCall(actualCallee, arguments, returnType).addEdge(returnsNode)
                             }
                             // Add cast to [Virtual] edge from receiver to returns, if return type is not final.
@@ -1507,7 +1507,7 @@ internal object Devirtualization {
                             expression
                         else with (cast) {
                             IrTypeOperatorCallImpl(startOffset, endOffset, type, operator,
-                                    typeOperand, typeOperandClassifier, expression)
+                                    typeOperand, expression)
                         }
                 with (coercion) {
                     return IrCallImpl(startOffset, endOffset, type, symbol, typeArgumentsCount, origin).apply {

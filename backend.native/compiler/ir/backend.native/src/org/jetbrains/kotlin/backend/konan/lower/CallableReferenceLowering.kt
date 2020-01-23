@@ -280,6 +280,7 @@ internal class CallableReferenceLowering(val context: Context): FileLoweringPass
                         else -> irBuiltIns.anyClass.owner.constructors.single()
                     }
                     +irDelegatingConstructorCall(superConstructor).apply {
+                        @Suppress("LABEL_NAME_CLASH")
                         if (!isKFunction && !isKSuspendFunction) return@apply
                         // TODO: Remove as soon as IR declarations have their originalDescriptor.
                         val name = (referencedFunction.descriptor as? WrappedSimpleFunctionDescriptor)?.originalDescriptor?.name

@@ -321,7 +321,7 @@ private fun processCLib(args: Array<String>, additionalArgs: Map<String, Any> = 
             argsToCompiler(staticLibraries, libraryPaths)
         }
         is StubIrDriver.Result.Metadata -> {
-            val args = LibraryCreationArguments(
+            val libraryCreationArguments = LibraryCreationArguments(
                     metadata = stubIrOutput.metadata,
                     nativeBitcodePath = nativeOutputPath,
                     target = tool.target,
@@ -330,7 +330,7 @@ private fun processCLib(args: Array<String>, additionalArgs: Map<String, Any> = 
                     manifest = def.manifestAddendProperties,
                     dependencies = allLibraryDependencies
             )
-            createInteropLibrary(args)
+            createInteropLibrary(libraryCreationArguments)
             return null
         }
     }

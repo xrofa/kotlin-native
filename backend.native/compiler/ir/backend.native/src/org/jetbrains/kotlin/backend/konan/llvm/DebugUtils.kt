@@ -159,6 +159,7 @@ internal fun generateDebugInfoHeader(context: Context) {
         val llvmModuleFlags = "llvm.module.flags"
         LLVMAddNamedMetadataOperand(context.llvmModule, llvmModuleFlags, dwarfVersion)
         LLVMAddNamedMetadataOperand(context.llvmModule, llvmModuleFlags, nodeDebugInfoVersion)
+        @Suppress("UNCHECKED_CAST")
         val objHeaderType = DICreateStructType(
                 refBuilder    = context.debugInfo.builder,
                 // TODO: here should be DIFile as scope.
@@ -180,7 +181,7 @@ internal fun generateDebugInfoHeader(context: Context) {
 @Suppress("UNCHECKED_CAST")
 internal fun IrType.dwarfType(context: Context, targetData: LLVMTargetDataRef): DITypeOpaqueRef {
     when {
-        this.computePrimitiveBinaryTypeOrNull() != null -> return debugInfoBaseType(context, targetData, this.render(), llvmType(context), encoding(context).value.toInt())
+        this.computePrimitiveBinaryTypeOrNull() != null -> return debugInfoBaseType(context, targetData, this.render(), llvmType(context), encoding().value.toInt())
         else -> {
             return when {
                 classOrNull != null || this.isTypeParameter() -> context.debugInfo.objHeaderPointerType!!
@@ -224,7 +225,7 @@ internal fun IrType.llvmType(context:Context): LLVMTypeRef = context.debugInfo.l
     }
 }
 
-internal fun IrType.encoding(context: Context): DwarfTypeKind = when(computePrimitiveBinaryTypeOrNull()) {
+internal fun IrType.encoding(): DwarfTypeKind = when(computePrimitiveBinaryTypeOrNull()) {
     PrimitiveBinaryType.FLOAT -> DwarfTypeKind.DW_ATE_float
     PrimitiveBinaryType.DOUBLE -> DwarfTypeKind.DW_ATE_float
     PrimitiveBinaryType.BOOLEAN -> DwarfTypeKind.DW_ATE_boolean

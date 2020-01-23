@@ -15,6 +15,7 @@ import java.lang.IllegalStateException
  *
  * [omitEmptyLines] is useful for testing output (e.g. diff calculating).
  */
+@Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
 class StubIrTextEmitter(
         private val context: StubIrContext,
         private val builderResult: StubIrBuilderResult,

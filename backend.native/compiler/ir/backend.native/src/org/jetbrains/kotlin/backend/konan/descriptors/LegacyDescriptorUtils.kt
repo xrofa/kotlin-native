@@ -119,6 +119,7 @@ fun AnnotationDescriptor.getStringValueOrNull(name: String): String? {
     return constantValue?.value as String?
 }
 
+@Suppress("UNCHECKED_CAST")
 fun <T> AnnotationDescriptor.getArgumentValueOrNull(name: String): T? {
     val constantValue = this.allValueArguments.entries.atMostOne {
         it.key.asString() == name

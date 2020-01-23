@@ -427,7 +427,6 @@ internal class CodeGeneratorVisitor(val context: Context, val lifetimes: Map<IrE
                     }
                     context.llvm.fileInitializers
                             .forEach { irField ->
-                                val expression = irField.initializer?.expression
                                 if (irField.initializer != null && irField.storageKind == FieldStorageKind.THREAD_LOCAL) {
                                     val initialization = evaluateExpression(irField.initializer!!.expression)
                                     val address = context.llvmDeclarations.forStaticField(irField).storageAddressAccess.getAddress(
@@ -738,6 +737,7 @@ internal class CodeGeneratorVisitor(val context: Context, val lifetimes: Map<IrE
                                     listOf(context.llvm.staticData.kotlinStringLiteral(
                                             "unsupported call of reified inlined function `${declaration.fqNameForIrSerialization}`").llvm),
                                     Lifetime.IRRELEVANT)
+                            @Suppress("LABEL_NAME_CLASH")
                             return@using
                         }
                         when (body) {
@@ -1962,10 +1962,11 @@ internal class CodeGeneratorVisitor(val context: Context, val lifetimes: Map<IrE
             context.debugInfo.subprograms.getOrPut(functionLlvmValue) {
                 memScoped {
                     val subroutineType = subroutineType(context, codegen.llvmTargetData)
-                    val functionLlvmValue = codegen.llvmFunction(this@scope)
-                    diFunctionScope(name.asString(), functionLlvmValue.name!!, startLine, subroutineType).also {
+                    val currentFunctionLlvmValue = codegen.llvmFunction(this@scope)
+                    assert(functionLlvmValue == currentFunctionLlvmValue)
+                    diFunctionScope(name.asString(), currentFunctionLlvmValue.name!!, startLine, subroutineType).also {
                         if (!this@scope.isInline)
-                            DIFunctionAddSubprogram(functionLlvmValue, it)
+                            DIFunctionAddSubprogram(currentFunctionLlvmValue, it)
                     }
                 }
             } as DIScopeOpaqueRef
