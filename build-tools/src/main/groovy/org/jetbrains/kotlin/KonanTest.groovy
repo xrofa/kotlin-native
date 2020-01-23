@@ -20,9 +20,11 @@ import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.TaskAction
 import org.gradle.process.ExecResult
+import org.jetbrains.kotlin.utils.DFS
 
 import java.nio.file.Paths
 import java.util.function.Function
+import java.util.function.UnaryOperator
 import java.util.regex.Pattern
 import java.util.stream.Collectors
 
@@ -254,7 +256,7 @@ class RunExternalTestGroup extends JavaExec {
         return text
     }
 
-    List<String> createTestFiles(String src) {
+    List<TestFile> createTestFiles(String src) {
         def identifier = /[a-zA-Z_][a-zA-Z0-9_]/
         def fullQualified = /[a-zA-Z_][a-zA-Z0-9_.]/
         def importRegex = /(?m)^\s*import\s+/
@@ -268,8 +270,8 @@ class RunExternalTestGroup extends JavaExec {
         def imports = []
         def classes = []
 
-        def filesToCompile = TestDirectivesKt.buildCompileList(project, "build/$src", "$outputDirectory/$src")
-                .stream()
+        def testFiles = TestDirectivesKt.buildCompileList(project, "build/$src", "$outputDirectory/$src")
+        def filesToCompile = testFiles.stream()
                 .map { f -> f.path }
                 .collect(Collectors.toList())
         for (String filePath : filesToCompile) {
@@ -363,9 +365,9 @@ class RunExternalTestGroup extends JavaExec {
             }
             createFile(filePath, res)
         }
-        createLauncherFile(src, "$outputDirectory/$src/_launcher.kt", imports)
-        filesToCompile.add("$outputDirectory/$src/_launcher.kt")
-        return filesToCompile
+        def launcherText = createLauncherFileText(src, imports)
+        testFiles.add(new TestFile("_launcher.kt", "$outputDirectory/$src/_launcher.kt".toString(), launcherText, null))
+        return testFiles
     }
 
     String normalize(String name) {
@@ -377,7 +379,7 @@ class RunExternalTestGroup extends JavaExec {
     /**
      * There are tests that require non-trivial 'package foo' in test launcher.
      */
-    void createLauncherFile(String src, String file, List<String> imports) {
+    String createLauncherFileText(String src, List<String> imports) {
         StringBuilder text = new StringBuilder()
         def pack = normalize(project.file(src).name)
         text.append("package _$pack\n")
@@ -396,7 +398,7 @@ fun runTest() {
     if (result != "OK") throw AssertionError("Test failed with: " + result)
 }
 """     )
-        createFile(file, text.toString())
+        return text.toString()
     }
 
     List<String> findLinesWithPrefixesRemoved(String text, String prefix) {
@@ -479,7 +481,7 @@ fun runTest() {
         testGroupReporter.suite(name) { suite ->
             // Build tests in the group
             flags = (flags ?: []) + "-tr"
-            def compileList = []
+            List<TestFile> compileList = []
             ktFiles.each {
                 def src = project.buildDir.relativePath(it)
                 if (isEnabledForNativeBackend(src)) {
@@ -489,16 +491,39 @@ fun runTest() {
                     compileList.addAll(createTestFiles(src))
                 }
             }
-            compileList.add(project.file("testUtils.kt").absolutePath)
-            compileList.add(project.file("helpers.kt").absolutePath)
+            compileList.add(new TestFile("testUtils.kt", project.file("testUtils.kt").absolutePath, null, null))
+            compileList.add(new TestFile("helpers.kt", project.file("helpers.kt").absolutePath, null, null))
             try {
                 if (enableTwoStageCompilation) {
                     // Two-stage compilation.
                     def klibPath = "${executablePath()}.klib"
-                    runCompiler(compileList, klibPath, flags + ["-p", "library"])
+                    def files = compileList.stream()
+                            .map { it.path }
+                            .collect(Collectors.toList())
+                    runCompiler(files, klibPath, flags + ["-p", "library"])
                     runCompiler([], executablePath(), flags + ["-Xinclude=$klibPath"])
                 } else {
-                    // Regular compilation.
+                    // Regular compilation with modules.
+                    Map<String, TestModule> modules = compileList.stream()
+                            .map { it.module }
+                            .distinct()
+                            .collect(Collectors.toMap({ it.name }, UnaryOperator.identity() ))
+
+                    List<TestModule> orderedModules = DFS.topologicalOrder(modules.values()) { module ->
+                        module.dependencies.collect { modules[it] }
+                    }
+                    orderedModules.reverse().each { module ->
+                        def klibModulePath = "${executablePath()}.${module.name}.klib".toString()
+                        def compFlags = flags + ["-p", "library"]
+                        module.dependencies.each {
+                            compFlags += ["-l", "${executablePath()}.${it}.klib".toString()]
+                        }
+                        runCompiler(module.testFiles.collect { it.path }, klibModulePath, compFlags)
+                    }
+
+                    orderedModules*.dependencies.each {
+                        flags += ["-l", "${executablePath()}.${it}.klib".toString()]
+                    }
                     runCompiler(compileList, executablePath(), flags)
                 }
             } catch (Exception ex) {

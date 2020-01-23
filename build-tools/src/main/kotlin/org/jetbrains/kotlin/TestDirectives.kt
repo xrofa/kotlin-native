@@ -72,13 +72,15 @@ data class TestModule(
         val testFiles: MutableList<TestFile> = mutableListOf()
 )
 
-data class TestFile(val name: String, val path: String, val text: String, val module: TestModule? = null) {
+data class TestFile(val name: String, val path: String, val text: String? = null, val module: TestModule? = null) {
     init {
-        Paths.get(path).run {
-            parent.toFile()
-                    .takeUnless { it.exists() }
-                    ?.mkdirs()
-            toFile().writeText(text)
+        if (text != null) {
+            Paths.get(path).run {
+                parent.toFile()
+                        .takeUnless { it.exists() }
+                        ?.mkdirs()
+                toFile().writeText(text)
+            }
         }
     }
 }
