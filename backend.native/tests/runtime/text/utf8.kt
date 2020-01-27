@@ -69,55 +69,77 @@ fun checkUtf8to16(expected: String, array: IntArray, conversion: ByteArray.() ->
     """.trimIndent())
 }
 
+@ExperimentalStdlibApi
 fun checkZeroTerminatedUtf8to16Replacing(expected: String, array: IntArray) {
     checkUtf8to16(expected, array) { stringFromUtf8() }
     checkUtf8to16(expected, array) { toKString() }
 }
+
+@ExperimentalStdlibApi
 fun checkUtf8to16Replacing(expected: String, array: IntArray) {
     checkUtf8to16(expected, array) { stringFromUtf8() }
     checkZeroTerminatedUtf8to16Replacing(expected, array)
     checkZeroTerminatedUtf8to16Replacing(expected, array.copyOf(array.size + 1))
 }
+
+@ExperimentalStdlibApi
 fun checkZeroTerminatedUtf8to16Throwing(expected: String, array: IntArray) {
     checkUtf8to16(expected, array) { stringFromUtf8OrThrow() }
     checkUtf8to16(expected, array) { toKString(throwOnInvalidSequence = true) }
 }
+
+@ExperimentalStdlibApi
 fun checkUtf8to16Throwing(expected: String, array: IntArray) {
     checkUtf8to16(expected, array) { decodeToString(throwOnInvalidSequence = true) }
     checkZeroTerminatedUtf8to16Throwing(expected, array)
     checkZeroTerminatedUtf8to16Throwing(expected, array.copyOf(array.size + 1))
 }
+
+@ExperimentalStdlibApi
 fun checkValidUtf8to16(expected: String, array: IntArray) {
     checkUtf8to16Replacing(expected, array)
     checkUtf8to16Throwing(expected, array)
 }
+
+@ExperimentalStdlibApi
 fun checkValidZeroTerminatedUtf8to16(expected: String, array: IntArray) {
     checkZeroTerminatedUtf8to16Replacing(expected, array)
     checkZeroTerminatedUtf8to16Throwing(expected, array)
 }
 
+@ExperimentalStdlibApi
 fun checkZeroTerminatedUtf8to16Replacing(expected: String, array: IntArray, start: Int, size: Int) {
     checkUtf8to16(expected, array) { stringFromUtf8(start, size) }
     checkUtf8to16(expected, array) { toKString(start, start + size) }
 }
+
+@ExperimentalStdlibApi
 fun checkUtf8to16Replacing(expected: String, array: IntArray, start: Int, size: Int) {
     checkUtf8to16(expected, array) { decodeToString(start, start + size) }
     checkZeroTerminatedUtf8to16Replacing(expected, array, start, size)
     checkZeroTerminatedUtf8to16Replacing(expected, array.copyOf(array.size + 1), start, size)
 }
+
+@ExperimentalStdlibApi
 fun checkZeroTerminatedUtf8to16Throwing(expected: String, array: IntArray, start: Int, size: Int) {
     checkUtf8to16(expected, array) { stringFromUtf8OrThrow(start, size) }
     checkUtf8to16(expected, array) { toKString(start, start + size, true) }
 }
+
+@ExperimentalStdlibApi
 fun checkUtf8to16Throwing(expected: String, array: IntArray, start: Int, size: Int) {
     checkUtf8to16(expected, array) { decodeToString(start, start + size, true) }
     checkZeroTerminatedUtf8to16Throwing(expected, array, start, size)
     checkZeroTerminatedUtf8to16Throwing(expected, array.copyOf(array.size + 1), start, size)
 }
+
+@ExperimentalStdlibApi
 fun checkValidUtf8to16(expected: String, array: IntArray, start: Int, size: Int) {
     checkUtf8to16Replacing(expected, array, start, size)
     checkUtf8to16Throwing(expected, array, start, size)
 }
+
+@ExperimentalStdlibApi
 fun checkValidZeroTerminatedUtf8to16(expected: String, array: IntArray, start: Int, size: Int) {
     checkZeroTerminatedUtf8to16Replacing(expected, array, start, size)
     checkZeroTerminatedUtf8to16Throwing(expected, array, start, size)
@@ -160,19 +182,26 @@ fun <T: Any> checkUtf8to16Throws(e: KClass<T>, string: String, array: IntArray, 
     arrayBytes.conversion()
 }
 
+@ExperimentalStdlibApi
 fun checkZeroTerminatedUtf8to16Throws(string: String, array: IntArray) {
     checkUtf8to16Throws(IllegalCharacterConversionException::class, string, array) { stringFromUtf8OrThrow() }
     checkUtf8to16Throws(CharacterCodingException::class, string, array) { toKString(throwOnInvalidSequence = true) }
 }
+
+@ExperimentalStdlibApi
 fun checkUtf8to16Throws(string: String, array: IntArray) {
     checkUtf8to16Throws(CharacterCodingException::class, string, array) { decodeToString(throwOnInvalidSequence = true) }
     checkZeroTerminatedUtf8to16Throws(string, array)
     checkZeroTerminatedUtf8to16Throws(string, array.copyOf(array.size + 1))
 }
+
+@ExperimentalStdlibApi
 fun checkZeroTerminatedUtf8to16Throws(string: String, array: IntArray, start: Int, size: Int) {
     checkUtf8to16Throws(IllegalCharacterConversionException::class, string, array) { stringFromUtf8OrThrow(start, size) }
     checkUtf8to16Throws(CharacterCodingException::class, string, array) { toKString(start, start + size, true) }
 }
+
+@ExperimentalStdlibApi
 fun checkUtf8to16Throws(string: String, array: IntArray, start: Int, size: Int) {
     checkUtf8to16Throws(CharacterCodingException::class, string, array) { decodeToString(start, start + size, true) }
     checkZeroTerminatedUtf8to16Throws(string, array, start, size)
@@ -206,26 +235,37 @@ fun <T: Any> checkOutOfBoundsUtf16to8(e: KClass<T>, string: String, start: Int, 
 
 
 // Utils for checking invalid-bounds-exception thrown by UTF-8 to UTF-16 conversion.
+@ExperimentalStdlibApi
 fun <T: Any> checkOutOfBoundsZeroTerminatedUtf8to16Replacing(e: KClass<T>, string: String, byteArray: ByteArray, start: Int, size: Int) {
     checkThrows(e, string) { byteArray.stringFromUtf8(start, size) }
     checkThrows(e, string) { byteArray.toKString(start, start + size) }
 }
+
+@ExperimentalStdlibApi
 fun <T: Any> checkOutOfBoundsUtf8to16Replacing(e: KClass<T>, string: String, byteArray: ByteArray, start: Int, size: Int) {
     checkThrows(e, string) { byteArray.decodeToString(start, start + size) }
     checkOutOfBoundsZeroTerminatedUtf8to16Replacing(e, string, byteArray, start, size)
 }
+
+@ExperimentalStdlibApi
 fun <T: Any> checkOutOfBoundsZeroTerminatedUtf8to16Throwing(e: KClass<T>, string: String, byteArray: ByteArray, start: Int, size: Int) {
     checkThrows(e, string) { byteArray.stringFromUtf8OrThrow(start, size) }
     checkThrows(e, string) { byteArray.toKString(start, start + size, true) }
 }
+
+@ExperimentalStdlibApi
 fun <T: Any> checkOutOfBoundsUtf8to16Throwing(e: KClass<T>, string: String, byteArray: ByteArray, start: Int, size: Int) {
     checkThrows(e, string) { byteArray.decodeToString(start, start + size, true) }
     checkOutOfBoundsZeroTerminatedUtf8to16Throwing(e, string, byteArray, start, size)
 }
+
+@ExperimentalStdlibApi
 fun <T: Any> checkOutOfBoundsUtf8to16(e: KClass<T>, string: String, byteArray: ByteArray, start: Int, size: Int) {
     checkOutOfBoundsUtf8to16Replacing(e, string, byteArray, start, size)
     checkOutOfBoundsUtf8to16Throwing(e, string, byteArray, start, size)
 }
+
+@ExperimentalStdlibApi
 fun <T: Any> checkOutOfBoundsZeroTerminatedUtf8to16(e: KClass<T>, string: String, byteArray: ByteArray, start: Int, size: Int) {
     checkOutOfBoundsZeroTerminatedUtf8to16Replacing(e, string, byteArray, start, size)
     checkOutOfBoundsZeroTerminatedUtf8to16Throwing(e, string, byteArray, start, size)
@@ -233,6 +273,7 @@ fun <T: Any> checkOutOfBoundsZeroTerminatedUtf8to16(e: KClass<T>, string: String
 
 
 // Util for performing action on result of UTF-8 to UTF-16 conversion.
+@ExperimentalStdlibApi
 fun convertUtf8to16(byteArray: ByteArray, action: (String) -> Unit) {
     byteArray.stringFromUtf8().let { action(it) }
     byteArray.decodeToString().let { action(it) }
@@ -240,6 +281,7 @@ fun convertUtf8to16(byteArray: ByteArray, action: (String) -> Unit) {
 }
 
 // ------------------------- Test UTF-16 to UTF-8 conversion -------------------------
+@ExperimentalStdlibApi
 fun test16to8() {
     // Valid strings.
     checkValidUtf16to8("Hello", intArrayOf('H'.toInt(), 'e'.toInt(), 'l'.toInt(), 'l'.toInt(), 'o'.toInt()))
@@ -291,6 +333,7 @@ fun test16to8() {
     checkFloatConversionThrows("12\uD800")
 }
 
+@ExperimentalStdlibApi
 fun test16to8CustomBorders() {
     // Valid strings.
     checkValidUtf16to8("Hello!", intArrayOf('H'.toInt(), 'e'.toInt()), 0, 2)
@@ -336,6 +379,7 @@ fun test16to8CustomBorders() {
     checkUtf16to8Throws("1\uD800\uDC002",  2, 2)
 }
 
+@ExperimentalStdlibApi
 fun testPrint() {
     // Valid strings.
     println("Hello")
@@ -359,6 +403,7 @@ fun testPrint() {
 }
 
 // ------------------------- Test UTF-8 to UTF-16 conversion -------------------------
+@ExperimentalStdlibApi
 fun test8to16() {
     // Valid strings.
     checkValidUtf8to16("Hello", intArrayOf('H'.toInt(), 'e'.toInt(), 'l'.toInt(), 'l'.toInt(), 'o'.toInt()))
@@ -383,6 +428,7 @@ fun test8to16() {
     checkUtf8to16Throws("\uFFFD1\uFFFD", intArrayOf(-16, -97, -104, '1'.toInt(), -16, -97, -104))
 }
 
+@ExperimentalStdlibApi
 fun test8to16CustomBorders() {
     // Valid strings.
     checkValidUtf8to16("He",
@@ -436,6 +482,7 @@ fun test8to16CustomBorders() {
 }
 
 // ----------------- Test zero-terminated UTF-8 to UTF-16 conversion -----------------
+@ExperimentalStdlibApi
 fun testZeroTerminated8To16() {
     // Valid strings.
     checkValidZeroTerminatedUtf8to16("Hell", intArrayOf('H'.toInt(), 'e'.toInt(), 'l'.toInt(), 'l'.toInt(), 0, 'o'.toInt()))
@@ -459,7 +506,7 @@ fun testZeroTerminated8To16() {
     checkZeroTerminatedUtf8to16Throws("\uFFFD", intArrayOf(-16, -97, -104, 0, '1'.toInt()))
     checkZeroTerminatedUtf8to16Throws("\uFFFD1", intArrayOf(-16, -97, -104, '1'.toInt(), 0, -16, -97, -104))
 }
-
+@ExperimentalStdlibApi
 fun testZeroTerminated8To16CustomBorders() {
     val array = intArrayOf('a'.toInt(), 'a'.toInt(), 'a'.toInt(), 0, 'b'.toInt(), 'b'.toInt(), 'b'.toInt(), 0)
     checkValidZeroTerminatedUtf8to16("aaa", array, 0, 5)
@@ -482,6 +529,7 @@ fun testZeroTerminated8To16CustomBorders() {
 }
 
 // ------------------------------------ Run tests ------------------------------------
+@ExperimentalStdlibApi
 @Test fun runTest() {
     test16to8()
     test16to8CustomBorders()

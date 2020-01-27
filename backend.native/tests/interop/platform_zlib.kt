@@ -21,6 +21,7 @@ fun main(args: Array<String>) = memScoped {
         }.ptr
 
         if (inflateInit2(z, -15) == Z_OK && inflate(z, Z_FINISH) == Z_STREAM_END && inflateEnd(z) == Z_OK)
+            @OptIn(kotlin.ExperimentalStdlibApi::class)
             println(buffer.toKString())
     }
     println(golden.toKString())
