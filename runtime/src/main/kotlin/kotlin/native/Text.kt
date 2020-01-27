@@ -14,6 +14,7 @@ import kotlinx.cinterop.toKString
         "Use toKString or decodeToString instead",
         ReplaceWith("toKString()", "kotlinx.cinterop.toKString")
 )
+@ExperimentalStdlibApi
 public fun ByteArray.stringFromUtf8() : String {
     @Suppress("DEPRECATION")
     return this.stringFromUtf8(0, this.size)
@@ -26,6 +27,7 @@ public fun ByteArray.stringFromUtf8() : String {
         "Use toKString or decodeToString instead",
         ReplaceWith("toKString(start, start + size)", "kotlinx.cinterop.toKString")
 )
+@ExperimentalStdlibApi
 public fun ByteArray.stringFromUtf8(start: Int = 0, size: Int = this.size) : String {
     return toKString(start, start + size)
 }
@@ -38,6 +40,7 @@ public fun ByteArray.stringFromUtf8(start: Int = 0, size: Int = this.size) : Str
         "Use toKString or decodeToString instead",
         ReplaceWith("toKString(throwOnInvalidSequence = true)", "kotlinx.cinterop.toKString")
 )
+@ExperimentalStdlibApi
 public fun ByteArray.stringFromUtf8OrThrow() : String {
     @Suppress("DEPRECATION")
     return this.stringFromUtf8OrThrow(0, this.size)
@@ -51,6 +54,7 @@ public fun ByteArray.stringFromUtf8OrThrow() : String {
         "Use toKString or decodeToString instead",
         ReplaceWith("toKString(start, start + size, throwOnInvalidSequence = true)", "kotlinx.cinterop.toKString")
 )
+@ExperimentalStdlibApi
 public fun ByteArray.stringFromUtf8OrThrow(start: Int = 0, size: Int = this.size) : String {
     try {
         return toKString(start, start + size, throwOnInvalidSequence = true)
