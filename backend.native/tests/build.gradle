@@ -3859,6 +3859,7 @@ if (isAppleTarget(project)) {
 
                 extraOpts "-Xembed-bitcode"
                 extraOpts project.globalTestArgs
+                extraOpts "-Xstatic-framework"
             }
 
             framework(secondFrameworkName, targets: [target.name]) {
@@ -3872,6 +3873,7 @@ if (isAppleTarget(project)) {
 
                 extraOpts "-Xembed-bitcode"
                 extraOpts project.globalTestArgs
+                extraOpts "-Xstatic-framework"
             }
         }
         swiftSources = ['framework/multiple/multiple.swift']
