@@ -366,7 +366,8 @@ class RunExternalTestGroup extends JavaExec {
             createFile(filePath, res)
         }
         def launcherText = createLauncherFileText(src, imports)
-        testFiles.add(new TestFile("_launcher.kt", "$outputDirectory/$src/_launcher.kt".toString(), launcherText, null))
+        testFiles.add(new TestFile("_launcher.kt", "$outputDirectory/$src/_launcher.kt".toString(),
+                launcherText, TestModule.default))
         return testFiles
     }
 
@@ -384,9 +385,8 @@ class RunExternalTestGroup extends JavaExec {
         def pack = normalize(project.file(src).name)
         text.append("package _$pack\n")
         for (v in imports) {
-            text.append("import ").append(v).append('\n')
+            text.append("import $v\n")
         }
-
         text.append(
 """
 import kotlin.test.Test
@@ -491,8 +491,8 @@ fun runTest() {
                     compileList.addAll(createTestFiles(src))
                 }
             }
-            compileList.add(new TestFile("testUtils.kt", project.file("testUtils.kt").absolutePath, null, null))
-            compileList.add(new TestFile("helpers.kt", project.file("helpers.kt").absolutePath, null, null))
+            compileList.add(new TestFile("testUtils.kt", project.file("testUtils.kt").absolutePath, "", TestModule.default))
+            compileList.add(new TestFile("helpers.kt", project.file("helpers.kt").absolutePath, "", TestModule.default))
             try {
                 if (enableTwoStageCompilation) {
                     // Two-stage compilation.
@@ -503,6 +503,7 @@ fun runTest() {
                     runCompiler(files, klibPath, flags + ["-p", "library"])
                     runCompiler([], executablePath(), flags + ["-Xinclude=$klibPath"])
                 } else {
+                    compileList.forEach { println("${it.name} ${it.path} ${it.path}") }
                     // Regular compilation with modules.
                     Map<String, TestModule> modules = compileList.stream()
                             .map { it.module }

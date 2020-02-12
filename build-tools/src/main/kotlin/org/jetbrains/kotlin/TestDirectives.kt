@@ -38,7 +38,7 @@ fun buildCompileList(project: Project, source: String, outputDirectory: String):
     } else {
         // There are several files
         var processedChars = 0
-        var module: TestModule? = null
+        var module: TestModule
         while (true) {
             var moduleName = matcher.group(1)
             val moduleDependencies = matcher.group(2)
@@ -47,6 +47,8 @@ fun buildCompileList(project: Project, source: String, outputDirectory: String):
             if (moduleName != null) {
                 moduleName = moduleName.trim { it <= ' ' }
                 module = TestModule(moduleName, parseModuleList(moduleDependencies), parseModuleList(moduleFriends))
+            } else {
+                module = TestModule.default
             }
 
             val fileName = matcher.group(4)
@@ -57,7 +59,7 @@ fun buildCompileList(project: Project, source: String, outputDirectory: String):
             val fileText = srcText.substring(start, end)
             processedChars = end
             val testFile = TestFile(fileName, filePath, fileText, module)
-            module?.testFiles?.add(testFile)
+            println(testFile)
             result.add(testFile)
             if (!nextFileExists) break
         }
@@ -68,13 +70,19 @@ fun buildCompileList(project: Project, source: String, outputDirectory: String):
 data class TestModule(
         val name: String,
         val dependencies: List<String>,
-        val friends: List<String>,
-        val testFiles: MutableList<TestFile> = mutableListOf()
-)
+        val friends: List<String>
+) {
+    companion object {
+        val default = TestModule("default", emptyList(), emptyList())
+    }
+}
 
-data class TestFile(val name: String, val path: String, val text: String? = null, val module: TestModule? = null) {
+data class TestFile(val name: String,
+                    val path: String,
+                    val text: String = "",
+                    val module: TestModule = TestModule.default) {
     init {
-        if (text != null) {
+        if (text != "") {
             Paths.get(path).run {
                 parent.toFile()
                         .takeUnless { it.exists() }
