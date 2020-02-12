@@ -94,7 +94,7 @@ targetList.each { target ->
                 '-produce', 'library', '-module-name', 'kotlinx-cli', '-XXLanguage:+AllowContractsForCustomFunctions',
                 '-Xmulti-platform', '-Xuse-experimental=kotlinx.cli.ExperimentalCli',
                 '-Xuse-experimental=kotlin.ExperimentalMultiplatform',
-                '-Xallow-result-return-type',
+                '-Xallow-result-return-type', '-Werror', '-Xopt-in=kotlin.RequiresOptIn',
                 commonSrc.absolutePath,
                 "-Xcommon-sources=${commonSrc.absolutePath}",
                 nativeSrc]

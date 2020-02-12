@@ -129,7 +129,7 @@ open class ArgParser(
     /**
      * Map of subcommands.
      */
-    @UseExperimental(ExperimentalCli::class)
+    @OptIn(ExperimentalCli::class)
     protected val subcommands = mutableMapOf<String, Subcommand>()
 
     /**
@@ -443,7 +443,7 @@ open class ArgParser(
             while (index < args.size) {
                 val arg = args[index]
                 // Check for subcommands.
-                @UseExperimental(ExperimentalCli::class)
+                @OptIn(ExperimentalCli::class)
                 subcommands.forEach { (name, subcommand) ->
                     if (arg == name) {
                         // Use parser for this subcommand.

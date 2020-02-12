@@ -103,6 +103,7 @@ class MultipleOption<T : Any, OptionType : MultipleOptionType, DefaultType: Defa
  */
 fun <T : Any, TResult, DefaultType: DefaultRequiredType> AbstractSingleOption<T, TResult, DefaultType>.multiple():
         MultipleOption<T, MultipleOptionType.Repeated, DefaultType> {
+    @Suppress("UNCHECKED_CAST")
     val newOption = with((delegate as ParsingValue<T, T>).descriptor as OptionDescriptor) {
         MultipleOption<T, MultipleOptionType.Repeated, DefaultType>(
             OptionDescriptor(
@@ -122,6 +123,7 @@ fun <T : Any, TResult, DefaultType: DefaultRequiredType> AbstractSingleOption<T,
  */
 fun <T : Any, DefaultType: DefaultRequiredType> MultipleOption<T, MultipleOptionType.Delimited, DefaultType>.multiple():
         MultipleOption<T, MultipleOptionType.RepeatedDelimited, DefaultRequiredType> {
+    @Suppress("UNCHECKED_CAST")
     val newOption = with((delegate as ParsingValue<T, List<T>>).descriptor as OptionDescriptor) {
         if (multiple) {
             error("Try to use modifier multiple() twice on option ${fullName ?: ""}")
@@ -145,6 +147,7 @@ fun <T : Any, DefaultType: DefaultRequiredType> MultipleOption<T, MultipleOption
  * @param value the default value.
  */
 fun <T : Any> SingleNullableOption<T>.default(value: T): SingleOption<T, DefaultRequiredType.Default> {
+    @Suppress("UNCHECKED_CAST")
     val newOption = with((delegate as ParsingValue<T, T>).descriptor as OptionDescriptor) {
         SingleOption<T, DefaultRequiredType.Default>(
             OptionDescriptor(
@@ -167,6 +170,7 @@ fun <T : Any> SingleNullableOption<T>.default(value: T): SingleOption<T, Default
 fun <T : Any, OptionType : MultipleOptionType>
         MultipleOption<T, OptionType, DefaultRequiredType.None>.default(value: Collection<T>):
         MultipleOption<T, OptionType, DefaultRequiredType.Default> {
+    @Suppress("UNCHECKED_CAST")
     val newOption = with((delegate as ParsingValue<T, List<T>>).descriptor as OptionDescriptor) {
         require(value.isNotEmpty()) { "Default value for option can't be empty collection." }
         MultipleOption<T, OptionType, DefaultRequiredType.Default>(
@@ -185,6 +189,7 @@ fun <T : Any, OptionType : MultipleOptionType>
  * Requires the option to be always provided in command line.
  */
 fun <T : Any> SingleNullableOption<T>.required(): SingleOption<T, DefaultRequiredType.Required> {
+    @Suppress("UNCHECKED_CAST")
     val newOption = with((delegate as ParsingValue<T, T>).descriptor as OptionDescriptor) {
         SingleOption<T, DefaultRequiredType.Required>(
             OptionDescriptor(
@@ -204,6 +209,7 @@ fun <T : Any> SingleNullableOption<T>.required(): SingleOption<T, DefaultRequire
 fun <T : Any, OptionType : MultipleOptionType>
         MultipleOption<T, OptionType, DefaultRequiredType.None>.required():
         MultipleOption<T, OptionType, DefaultRequiredType.Required> {
+    @Suppress("UNCHECKED_CAST")
     val newOption = with((delegate as ParsingValue<T, List<T>>).descriptor as OptionDescriptor) {
         MultipleOption<T, OptionType, DefaultRequiredType.Required>(
             OptionDescriptor(
@@ -228,6 +234,7 @@ fun <T : Any, OptionType : MultipleOptionType>
 fun <T : Any, DefaultRequired: DefaultRequiredType> AbstractSingleOption<T, *, DefaultRequired>.delimiter(
     delimiterValue: String):
         MultipleOption<T, MultipleOptionType.Delimited, DefaultRequired> {
+    @Suppress("UNCHECKED_CAST")
     val newOption = with((delegate as ParsingValue<T, T>).descriptor as OptionDescriptor) {
         MultipleOption<T, MultipleOptionType.Delimited, DefaultRequired>(
             OptionDescriptor(
@@ -252,6 +259,7 @@ fun <T : Any, DefaultRequired: DefaultRequiredType> AbstractSingleOption<T, *, D
 fun <T : Any, DefaultRequired: DefaultRequiredType> MultipleOption<T, MultipleOptionType.Repeated, DefaultRequired>.delimiter(
     delimiterValue: String):
         MultipleOption<T, MultipleOptionType.RepeatedDelimited, DefaultRequired> {
+    @Suppress("UNCHECKED_CAST")
     val newOption = with((delegate as ParsingValue<T, List<T>>).descriptor as OptionDescriptor) {
         MultipleOption<T, MultipleOptionType.RepeatedDelimited, DefaultRequired>(
             OptionDescriptor(
