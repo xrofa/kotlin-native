@@ -503,7 +503,7 @@ fun runTest() {
                     runCompiler(files, klibPath, flags + ["-p", "library"])
                     runCompiler([], executablePath(), flags + ["-Xinclude=$klibPath"])
                 } else {
-                    compileList.forEach { println("${it.name} ${it.path} ${it.path}") }
+                    compileList.forEach { println("${it.name} ${it.module}") }
                     // Regular compilation with modules.
                     Map<String, TestModule> modules = compileList.stream()
                             .map { it.module }

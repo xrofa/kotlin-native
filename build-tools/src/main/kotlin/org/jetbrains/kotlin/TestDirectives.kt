@@ -58,9 +58,7 @@ fun buildCompileList(project: Project, source: String, outputDirectory: String):
             val end = if (nextFileExists) matcher.start() else srcText.length
             val fileText = srcText.substring(start, end)
             processedChars = end
-            val testFile = TestFile(fileName, filePath, fileText, module)
-            println(testFile)
-            result.add(testFile)
+            result.add(TestFile(fileName, filePath, fileText, module))
             if (!nextFileExists) break
         }
     }
