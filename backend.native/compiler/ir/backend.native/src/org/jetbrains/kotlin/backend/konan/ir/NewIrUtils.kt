@@ -105,4 +105,4 @@ fun buildSimpleAnnotation(irBuiltIns: IrBuiltIns, startOffset: Int, endOffset: I
 
 inline fun <reified R> IrExpression?.constToValue():R = (this as IrConst<*>).value as R
 
-inline fun <reified R> IrExpression?.constToValueNullable():R? = (this as? IrConst<*>)?.value as R
+inline fun <reified R> IrExpression?.constToValueNullable():R? = (this as? IrConst<*>)?.value as R?
