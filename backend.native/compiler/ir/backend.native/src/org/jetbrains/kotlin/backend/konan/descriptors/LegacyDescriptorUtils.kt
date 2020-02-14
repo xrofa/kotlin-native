@@ -29,14 +29,13 @@ import org.jetbrains.kotlin.types.typeUtil.isUnit
  *
  * TODO: this method is actually a part of resolve and probably duplicates another one
  */
-internal fun <T : CallableMemberDescriptor> T.resolveFakeOverride(allowAbstract: Boolean = false): T {
-    if (this.kind.isReal) {
+internal inline fun <reified T : CallableMemberDescriptor> T.resolveFakeOverride(allowAbstract: Boolean = false): T {
+    if (kind.isReal) {
         return this
     } else {
         val overridden = OverridingUtil.getOverriddenDeclarations(this)
         val filtered = OverridingUtil.filterOutOverridden(overridden)
         // TODO: is it correct to take first?
-        @Suppress("UNCHECKED_CAST")
         return filtered.first { allowAbstract || it.modality != Modality.ABSTRACT } as T
     }
 }
@@ -119,8 +118,7 @@ fun AnnotationDescriptor.getStringValueOrNull(name: String): String? {
     return constantValue?.value as String?
 }
 
-@Suppress("UNCHECKED_CAST")
-fun <T> AnnotationDescriptor.getArgumentValueOrNull(name: String): T? {
+inline fun <reified T> AnnotationDescriptor.getArgumentValueOrNull(name: String): T? {
     val constantValue = this.allValueArguments.entries.atMostOne {
         it.key.asString() == name
     }?.value

@@ -111,8 +111,7 @@ abstract class AbstractKonanMangler : KotlinManglerImpl() {
             }
 
             this.annotations.findAnnotation(RuntimeNames.exportForCppRuntime)?.let {
-                val name = it.getAnnotationStringValue() ?: this.name.asString()
-                return name // no wrapping currently required
+                return it.getAnnotationStringValue() // no wrapping currently required
             }
 
             val parent = this.parent

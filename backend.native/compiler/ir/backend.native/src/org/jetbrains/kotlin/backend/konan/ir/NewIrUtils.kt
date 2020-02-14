@@ -68,14 +68,13 @@ val IrClass.isFinalClass: Boolean
 
 fun IrClass.isSpecialClassWithNoSupertypes() = this.isAny() || this.isNothing()
 
-@Suppress("UNCHECKED_CAST")
-fun <T> IrDeclaration.getAnnotationArgumentValue(fqName: FqName, argumentName: String): T? {
+inline fun <reified T> IrDeclaration.getAnnotationArgumentValue(fqName: FqName, argumentName: String): T? {
     val annotation = this.annotations.findAnnotation(fqName) ?: return null
     for (index in 0 until annotation.valueArgumentsCount) {
         val parameter = annotation.symbol.owner.valueParameters[index]
         if (parameter.name == Name.identifier(argumentName)) {
-            val actual = annotation.getValueArgument(index) as? IrConst<T>
-            return actual?.value
+            val actual = annotation.getValueArgument(index) as? IrConst<*>
+            return actual?.value as T
         }
     }
     return null
