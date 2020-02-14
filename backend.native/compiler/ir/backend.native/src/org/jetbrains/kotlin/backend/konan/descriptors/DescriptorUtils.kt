@@ -260,19 +260,16 @@ internal val IrClass.isFrozen: Boolean
             // RTTI is used for non-reference type box or Objective-C object wrapper:
             !this.defaultType.binaryTypeIsReference() || this.isObjCClass()
 
-@Suppress("UNCHECKED_CAST")
-fun IrConstructorCall.getAnnotationStringValue() = (getValueArgument(0) as? IrConst<String>)?.value
+fun IrConstructorCall.getAnnotationStringValue() = getValueArgument(0).constToValue<String>()
 
-@Suppress("UNCHECKED_CAST")
 fun IrConstructorCall.getAnnotationStringValue(name: String): String {
     val parameter = symbol.owner.valueParameters.single { it.name.asString() == name }
-    return (getValueArgument(parameter.index) as IrConst<String>).value
+    return getValueArgument(parameter.index).constToValue()
 }
 
-@Suppress("UNCHECKED_CAST")
-fun <T> IrConstructorCall.getAnnotationValueOrNull(name: String): T? {
+inline fun <reified T> IrConstructorCall.getAnnotationValueOrNull(name: String): T? {
     val parameter = symbol.owner.valueParameters.atMostOne { it.name.asString() == name }
-    return parameter?.let { getValueArgument(it.index)?.let { (it as IrConst<T>).value } }
+    return parameter?.let { getValueArgument(it.index)?.let { it.constToValue<T>() } }
 }
 
 fun IrFunction.externalSymbolOrThrow(): String? {
