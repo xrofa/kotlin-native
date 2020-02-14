@@ -15,7 +15,7 @@ import java.lang.IllegalStateException
  *
  * [omitEmptyLines] is useful for testing output (e.g. diff calculating).
  */
-@Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
+
 class StubIrTextEmitter(
         private val context: StubIrContext,
         private val builderResult: StubIrBuilderResult,
@@ -147,6 +147,7 @@ class StubIrTextEmitter(
                 out("private val loadLibrary = loadKonanLibrary(\"${context.libName}\")")
         }
     }
+    @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
     private val printer = object : StubIrVisitor<StubContainer?, Unit> {
 
         override fun visitClass(element: ClassStub, owner: StubContainer?) {

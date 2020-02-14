@@ -181,7 +181,7 @@ internal fun generateDebugInfoHeader(context: Context) {
 @Suppress("UNCHECKED_CAST")
 internal fun IrType.dwarfType(context: Context, targetData: LLVMTargetDataRef): DITypeOpaqueRef {
     when {
-        this.computePrimitiveBinaryTypeOrNull() != null -> return debugInfoBaseType(context, targetData, this.render(), llvmType(context), encoding().value.toInt())
+        this.computePrimitiveBinaryTypeOrNull() != null -> return debugInfoBaseType(context, targetData, this.render(), llvmType(context), encoding.value.toInt())
         else -> {
             return when {
                 classOrNull != null || this.isTypeParameter() -> context.debugInfo.objHeaderPointerType!!
@@ -225,17 +225,18 @@ internal fun IrType.llvmType(context:Context): LLVMTypeRef = context.debugInfo.l
     }
 }
 
-internal fun IrType.encoding(): DwarfTypeKind = when(computePrimitiveBinaryTypeOrNull()) {
-    PrimitiveBinaryType.FLOAT -> DwarfTypeKind.DW_ATE_float
-    PrimitiveBinaryType.DOUBLE -> DwarfTypeKind.DW_ATE_float
-    PrimitiveBinaryType.BOOLEAN -> DwarfTypeKind.DW_ATE_boolean
-    PrimitiveBinaryType.POINTER -> DwarfTypeKind.DW_ATE_address
-    else -> {
-        //TODO: not recursive.
-        if (this.isUnsigned()) DwarfTypeKind.DW_ATE_unsigned
-        else DwarfTypeKind.DW_ATE_signed
+internal val IrType.encoding: DwarfTypeKind
+    get() = when(computePrimitiveBinaryTypeOrNull()) {
+        PrimitiveBinaryType.FLOAT -> DwarfTypeKind.DW_ATE_float
+        PrimitiveBinaryType.DOUBLE -> DwarfTypeKind.DW_ATE_float
+        PrimitiveBinaryType.BOOLEAN -> DwarfTypeKind.DW_ATE_boolean
+        PrimitiveBinaryType.POINTER -> DwarfTypeKind.DW_ATE_address
+        else -> {
+            //TODO: not recursive.
+            if (this.isUnsigned()) DwarfTypeKind.DW_ATE_unsigned
+            else DwarfTypeKind.DW_ATE_signed
+        }
     }
-}
 
 internal fun alignTo(value:Long, align:Long):Long = (value + align - 1) / align * align
 

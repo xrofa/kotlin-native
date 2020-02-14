@@ -10,6 +10,7 @@ import org.jetbrains.kotlin.backend.konan.RuntimeNames
 import org.jetbrains.kotlin.backend.konan.cgen.isCEnumType
 import org.jetbrains.kotlin.backend.konan.descriptors.getAnnotationStringValue
 import org.jetbrains.kotlin.backend.konan.ir.KonanSymbols
+import org.jetbrains.kotlin.backend.konan.ir.constToValue
 import org.jetbrains.kotlin.backend.konan.ir.superClasses
 import org.jetbrains.kotlin.backend.konan.llvm.IntrinsicType
 import org.jetbrains.kotlin.ir.builders.*
@@ -261,7 +262,7 @@ private fun InteropCallContext.generateEnumVarValueAccess(callSite: IrCall): IrE
 private fun InteropCallContext.generateMemberAtAccess(callSite: IrCall): IrExpression {
     val accessor = callSite.symbol.owner
     val memberAt = accessor.getAnnotation(RuntimeNames.cStructMemberAt)!!
-    val offset = (memberAt.getValueArgument(0) as IrConst<Long>).value
+    val offset = memberAt.getValueArgument(0).constToValue<Long>()
     val fieldPointer = calculateFieldPointer(callSite.dispatchReceiver!!, offset)
     return when {
         accessor.isGetter -> {
@@ -291,7 +292,7 @@ private fun InteropCallContext.generateMemberAtAccess(callSite: IrCall): IrExpre
 private fun InteropCallContext.generateArrayMemberAtAccess(callSite: IrCall): IrExpression {
     val accessor = callSite.symbol.owner
     val memberAt = accessor.getAnnotation(RuntimeNames.cStructArrayMemberAt)!!
-    val offset = (memberAt.getValueArgument(0) as IrConst<Long>).value
+    val offset = memberAt.getValueArgument(0).constToValue<Long>()
     val fieldPointer = calculateFieldPointer(callSite.dispatchReceiver!!, offset)
     return builder.irCall(symbols.interopInterpretCPointer).also {
         it.putValueArgument(0, fieldPointer)
@@ -349,8 +350,8 @@ private fun InteropCallContext.readBits(
 private fun InteropCallContext.generateBitFieldAccess(callSite: IrCall): IrExpression {
     val accessor = callSite.symbol.owner
     val bitField = accessor.getAnnotation(RuntimeNames.cStructBitField)!!
-    val offset = (bitField.getValueArgument(0) as IrConst<Long>).value
-    val size = (bitField.getValueArgument(1) as IrConst<Int>).value
+    val offset = bitField.getValueArgument(0).constToValue<Long>()
+    val size = bitField.getValueArgument(1).constToValue<Int>()
     val base = builder.irCall(symbols.interopNativePointedRawPtrGetter).also {
         it.dispatchReceiver = callSite.dispatchReceiver!!
     }
