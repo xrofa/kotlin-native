@@ -46,7 +46,9 @@ fun buildCompileList(project: Project, source: String, outputDirectory: String):
 
             if (moduleName != null) {
                 moduleName = moduleName.trim { it <= ' ' }
-                module = TestModule(moduleName, parseModuleList(moduleDependencies), parseModuleList(moduleFriends))
+                module = TestModule("${srcFile.name}/$moduleName",
+                        parseModuleList(moduleDependencies).map { "$it/${srcFile.name}" },
+                        parseModuleList(moduleFriends).map { "$it/${srcFile.name}" })
             } else {
                 module = TestModule.default
             }
@@ -80,6 +82,7 @@ data class TestFile(val name: String,
                     val text: String = "",
                     val module: TestModule = TestModule.default) {
     init {
+        // TODO: move to some method
         if (text != "") {
             Paths.get(path).run {
                 parent.toFile()

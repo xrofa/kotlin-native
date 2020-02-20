@@ -269,6 +269,7 @@ class RunExternalTestGroup extends JavaExec {
         def packages = new LinkedHashSet<String>()
         def imports = []
         def classes = []
+        TestModule mainModule = null
 
         def testFiles = TestDirectivesKt.buildCompileList(project, "build/$src", "$outputDirectory/$src")
         def filesToCompile = testFiles.stream()
@@ -291,6 +292,7 @@ class RunExternalTestGroup extends JavaExec {
             }
             if (text =~ boxPattern) {
                 imports.add("${pkg}.*")
+                mainModule = testFiles.find { it.path == filePath }.module
             }
 
             // Find mutable objects that should be marked as ThreadLocal
@@ -367,7 +369,7 @@ class RunExternalTestGroup extends JavaExec {
         }
         def launcherText = createLauncherFileText(src, imports)
         testFiles.add(new TestFile("_launcher.kt", "$outputDirectory/$src/_launcher.kt".toString(),
-                launcherText, TestModule.default))
+                launcherText, mainModule != null ? mainModule : TestModule.default))
         return testFiles
     }
 
@@ -511,7 +513,7 @@ fun runTest() {
                             .collect(Collectors.toMap({ it.name }, UnaryOperator.identity() ))
 
                     List<TestModule> orderedModules = DFS.topologicalOrder(modules.values()) { module ->
-                        module.dependencies.collect { modules[it] }
+                        module.dependencies.collect { modules[it] }.findAll { it != null }
                     }
                     orderedModules.reverse().each { module ->
                         def klibModulePath = "${executablePath()}.${module.name}.klib".toString()
@@ -519,7 +521,8 @@ fun runTest() {
                         module.dependencies.each {
                             compFlags += ["-l", "${executablePath()}.${it}.klib".toString()]
                         }
-                        runCompiler(module.testFiles.collect { it.path }, klibModulePath, compFlags)
+                        runCompiler(compileList.findAll { it.module == module }.collect { it.path },
+                                klibModulePath, compFlags)
                     }
 
                     orderedModules*.dependencies.each {
