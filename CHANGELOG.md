@@ -1,9 +1,8 @@
 # v1.4.0-M1 (Feb 2020)
   * 1.4 Language features
-  * klib versioning
-  * commonizer support
-  * caches support
-  * inerrop metadata
+  * Klib versioning
+  * Commonizer support
+  * Experimental mimalloc allocator support (-Xallocator=mimalloc) to improve execution time performance
 
 # v1.3.70 (Dec 2019)
   * Support compiler caches for debug mode (GH-3650)
