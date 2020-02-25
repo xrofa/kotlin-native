@@ -1,3 +1,10 @@
+# v1.4.0-M1 (Feb 2020)
+  * 1.4 Language features
+  * klib versioning
+  * commonizer support
+  * caches support
+  * inerrop metadata
+
 # v1.3.70 (Dec 2019)
   * Support compiler caches for debug mode (GH-3650)
   * Support running Kotlin/Native compiler from Gradle daemon (GH-3442)
