@@ -35,6 +35,7 @@ import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 import org.jetbrains.kotlin.name.Name
+import sun.misc.Unsafe
 import java.util.*
 import kotlin.collections.ArrayList
 
@@ -119,10 +120,70 @@ internal object Devirtualization {
 
         private val symbolTable = moduleDFG.symbolTable
 
-        sealed class Node(val id: Int) : DirectedGraphNode<Node> {
-            override var directEdges: MutableList<Node>? = null
-            override var reversedEdges : MutableList<Node>? = null
-            override val key get() = this
+        class IntArrayList : Iterable<Int> {
+            private var array = ByteArray(4)
+            private var length = 0
+
+            val size get() = length
+
+            fun isEmpty() = size == 0
+
+            fun add(x: Int) {
+                ensureCapacity(4 + length * 4)
+                set(length, x)
+                length++
+            }
+
+            fun reserve(minSize: Int) {
+                ensureCapacity(minSize * 4)
+            }
+
+            operator fun get(index: Int): Int = array.getIntAt(index * 4)
+
+            operator fun set(index: Int, x: Int) {
+                array.setIntAt(index * 4, x)
+            }
+
+            override operator fun iterator(): Iterator<Int> = Itr()
+
+            private fun ByteArray.getIntAt(index: Int) = TheUnsafe.getInt(this, ByteArrayDataOffset + index)
+
+            private fun ByteArray.setIntAt(index: Int, x: Int) = TheUnsafe.putInt(this, ByteArrayDataOffset + index, x)
+
+            private fun ensureCapacity(minCapacity: Int) {
+                val oldArray = array
+                if (minCapacity > oldArray.size) {
+                    var newSize = oldArray.size * 3 / 2
+                    if (minCapacity > newSize)
+                        newSize = minCapacity
+                    val newArray = ByteArray(newSize)
+                    TheUnsafe.copyMemory(oldArray, ByteArrayDataOffset, newArray, ByteArrayDataOffset, oldArray.size.toLong())
+                    array = newArray
+                }
+            }
+
+            private inner class Itr : Iterator<Int> {
+                private var index = 0
+
+                override fun hasNext() = index < size
+
+                override fun next() = get(index++)
+
+            }
+
+            companion object {
+                val TheUnsafe = Unsafe::class.java.getDeclaredField("theUnsafe").let {
+                    it.isAccessible = true
+                    it.get(null) as Unsafe
+                }
+
+                val ByteArrayDataOffset = TheUnsafe.arrayBaseOffset(ByteArray::class.java).toLong()
+            }
+        }
+
+        sealed class Node(val id: Int) {
+            var directEdges: IntArrayList? = null
+            var reversedEdges: IntArrayList? = null
 
             var directCastEdges: MutableList<CastEdge>? = null
             var reversedCastEdges: MutableList<CastEdge>? = null
@@ -137,10 +198,10 @@ internal object Devirtualization {
             val multiNodeSize get() = multiNodeEnd - multiNodeStart
 
             fun addEdge(node: Node) {
-                if (directEdges == null) directEdges = ArrayList(1)
-                directEdges!!.add(node)
-                if (node.reversedEdges == null) node.reversedEdges = ArrayList(1)
-                node.reversedEdges!!.add(this)
+                if (directEdges == null) directEdges = IntArrayList()
+                node.directEdges!!.add(node.id)
+                if (node.reversedEdges == null) node.reversedEdges = IntArrayList()
+                node.reversedEdges!!.add(id)
             }
 
             fun addCastEdge(edge: CastEdge) {
@@ -177,12 +238,11 @@ internal object Devirtualization {
 
         class Function(val symbol: DataFlowIR.FunctionSymbol, val parameters: Array<Node>, val returns: Node, val throws: Node)
 
-        inner class ConstraintGraph : DirectedGraph<Node, Node> {
+        inner class ConstraintGraph {
 
             private var nodesCount = 0
 
-            override val nodes = mutableListOf<Node>()
-            override fun get(key: Node) = key
+            val nodes = mutableListOf<Node>()
 
             val voidNode = addNode { Node.Ordinary(it, { "Void" }) }
             val virtualNode = addNode { Node.Source(it, VIRTUAL_TYPE_ID, { "Virtual" }) }
@@ -449,11 +509,12 @@ internal object Devirtualization {
         fun BitSet.copy() = BitSet(this.size()).apply { this.or(this@copy) }
 
         fun printPathToType(node: Node, type: Int) {
-            val visited = mutableSetOf<Node>()
+            val nodes = constraintGraph.nodes
+            val visited = BitSet()
             val prev = mutableMapOf<Node, Node>()
             var front = mutableListOf<Node>()
             front.add(node)
-            visited.add(node)
+            visited.set(node.id)
             lateinit var source: Node.Source
             bfs@while (front.isNotEmpty()) {
                 val prevFront = front
@@ -461,9 +522,10 @@ internal object Devirtualization {
                 for (from in prevFront) {
                     val reversedEdges = from.reversedEdges
                     if (reversedEdges != null)
-                        for (to in reversedEdges) {
-                            if (!visited.contains(to) && to.types[type]) {
-                                visited.add(to)
+                        for (toId in reversedEdges) {
+                            val to = nodes[toId]
+                            if (!visited[toId] && to.types[type]) {
+                                visited.set(toId)
                                 prev[to] = from
                                 front.add(to)
                                 if (to is Node.Source) {
@@ -476,8 +538,8 @@ internal object Devirtualization {
                     if (reversedCastEdges != null)
                         for (castEdge in reversedCastEdges) {
                             val to = castEdge.node
-                            if (!visited.contains(to) && castEdge.suitableTypes[type] && to.types[type]) {
-                                visited.add(to)
+                            if (!visited[to.id] && castEdge.suitableTypes[type] && to.types[type]) {
+                                visited.set(to.id)
                                 prev[to] = from
                                 front.add(to)
                                 if (to is Node.Source) {
@@ -552,8 +614,8 @@ internal object Devirtualization {
             private fun findOrder(node: Node, order: IntArray) {
                 visited.set(node.id)
                 node.directEdges?.forEach {
-                    if (!visited[it.id])
-                        findOrder(it, order)
+                    if (!visited[it])
+                        findOrder(nodes[it], order)
                 }
                 order[index++] = node.id
             }
@@ -562,8 +624,8 @@ internal object Devirtualization {
                 visited.set(node.id)
                 multiNodes[index++] = node.id
                 node.reversedEdges?.forEach {
-                    if (!visited[it.id])
-                        paint(it)
+                    if (!visited[it])
+                        paint(nodes[it])
                 }
             }
 
@@ -572,7 +634,7 @@ internal object Devirtualization {
                 for (v in multiNode.multiNodeStart until multiNode.multiNodeEnd) {
                     val node = nodes[multiNodes[v]]
                     node.directEdges?.forEach {
-                        val nextMultiNode = multiNodes[it.multiNodeStart]
+                        val nextMultiNode = multiNodes[nodes[it].multiNodeStart]
                         if (!visited[nextMultiNode])
                             findMultiNodesOrder(nodes[nextMultiNode], order)
                     }
@@ -605,7 +667,7 @@ internal object Devirtualization {
                 constraintGraph.nodes.forEach {
                     println("    NODE #${it.id}")
                     it.directEdges?.forEach {
-                        println("        EDGE: #${it.id}z")
+                        println("        EDGE: #${it}z")
                     }
                     it.directCastEdges?.forEach {
                         println("        CAST EDGE: #${it.node.id}z casted to ${it.suitableTypes.format(allTypes)}")
@@ -666,7 +728,7 @@ internal object Devirtualization {
                         continue // A source has no incoming edges.
                     val types = BitSet()
                     condensation.forEachNode(multiNode) { node ->
-                        node.reversedEdges?.forEach { types.or(it.types) }
+                        node.reversedEdges?.forEach { types.or(constraintGraph.nodes[it].types) }
                         node.reversedCastEdges
                                 ?.filter { it.node.priority < node.priority } // Doesn't contradict topological order.
                                 ?.forEach {
@@ -720,7 +782,8 @@ internal object Devirtualization {
                 for (i in 0 until prevFrontSize) {
                     marked[prevFront[i]] = false
                     val node = constraintGraph.nodes[prevFront[i]]
-                    node.directEdges?.forEach { distNode ->
+                    node.directEdges?.forEach { distNodeId ->
+                        val distNode = constraintGraph.nodes[distNodeId]
                         if (marked[distNode.id])
                             distNode.types.or(node.types)
                         else {
