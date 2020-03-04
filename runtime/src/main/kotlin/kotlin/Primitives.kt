@@ -1170,6 +1170,18 @@ public final class Float private constructor() : Number(), Comparable<Float> {
          * A constant holding the "not a number" value of Float.
          */
         public val NaN: Float = kotlinx.cinterop.bitsToFloat(0x7fc00000)
+
+        /**
+         * The number of bytes used to represent an instance of Float in a binary form.
+         */
+        @SinceKotlin("1.4")
+        public const val SIZE_BYTES: Int = 4
+
+        /**
+         * The number of bits used to represent an instance of Float in a binary form.
+         */
+        @SinceKotlin("1.4")
+        public const val SIZE_BITS: Int = 32
     }
 
     /**
@@ -1427,6 +1439,18 @@ public final class Double private constructor() : Number(), Comparable<Double> {
          * A constant holding the "not a number" value of Double.
          */
         public val NaN: Double = kotlinx.cinterop.bitsToDouble(0x7ff8000000000000L)
+
+        /**
+         * The number of bytes used to represent an instance of Double in a binary form.
+         */
+        @SinceKotlin("1.4")
+        public const val SIZE_BYTES: Int = 8
+
+        /**
+         * The number of bits used to represent an instance of Double in a binary form.
+         */
+        @SinceKotlin("1.4")
+        public const val SIZE_BITS: Int = 64
     }
 
     /**
