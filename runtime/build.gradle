@@ -3,6 +3,8 @@
  * that can be found in the LICENSE file.
  */
 import org.jetbrains.kotlin.CompileToBitcode
+import org.jetbrains.kotlin.ClangFormatFixTask
+import org.jetbrains.kotlin.ClangFormatCheckTask
 import org.jetbrains.kotlin.UtilsKt
 
 // TODO: consider using some Gradle plugins to build and test
@@ -100,4 +102,28 @@ task generateJsMath {
             mathJs.append(it)
         }
     }
+}
+
+def clangFormatTargets = project.fileTree("src/main") {
+    include '**/*.c'
+    include '**/*.cpp'
+    include '**/*.h'
+    include '**/*.hpp'
+    include '**/*.m'
+    include '**/*.mm'
+
+    // External libraries:
+    exclude 'cpp/dlmalloc/'
+    exclude 'cpp/dtoa/'
+    exclude 'cpp/math/'
+    exclude 'cpp/snprintf/'
+    exclude 'cpp/utf8/'
+}
+
+task format(type: ClangFormatFixTask) {
+    files = clangFormatTargets
+}
+
+task formatCheck(type: ClangFormatCheckTask) {
+    files = clangFormatTargets
 }
