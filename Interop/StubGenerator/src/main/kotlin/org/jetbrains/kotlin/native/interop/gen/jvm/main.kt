@@ -328,10 +328,11 @@ private fun processCLib(args: Array<String>, additionalArgs: Map<String, Any> = 
         }
     }
 
-    val nativeBitcodes = compileSources(
+    val compiledFiles = compileSources(
             cinteropArguments.compileSource,
             nativeLibsDir,
-            "${tool.llvmHome}/bin/clang++"
+            tool,
+            *cinteropArguments.sourceCompileOptions.toTypedArray()
     )
 
     return when (stubIrOutput) {
@@ -341,7 +342,7 @@ private fun processCLib(args: Array<String>, additionalArgs: Map<String, Any> = 
         is StubIrDriver.Result.Metadata -> {
             createInteropLibrary(
                     metadata = stubIrOutput.metadata,
-                    nativeBitcodePathes = nativeBitcodes + nativeOutputPath,
+                    nativeBitcodePathes = compiledFiles + nativeOutputPath,
                     target = tool.target,
                     moduleName = moduleName,
                     outputPath = cinteropArguments.output,
@@ -357,15 +358,16 @@ private fun processCLib(args: Array<String>, additionalArgs: Map<String, Any> = 
 private fun compileSources(
         sources: List<String>,
         nativeLibsDir: String,
-        compiler: String,
+        toolConfig: ToolConfig,
         vararg compilerArgs: String
-): List<String> =
-    sources.map { source ->
-        val filename = "$nativeLibsDir/${File(source).nameWithoutExtension}.bc"
-        val compilerCmd = arrayOf(compiler, source, "-emit-llvm", "-c", "-o", filename, *compilerArgs)
-        runCmd(compilerCmd, verbose = true)
-        filename
-    }
+): List<String> = sources.map { source ->
+    // Mangle path into name to avoid collisions.
+    val mangledFileName = File(source).nameWithoutExtension
+    val outputFileName = "$nativeLibsDir/${mangledFileName}.bc"
+    val compilerCmd = toolConfig.clang.clangCXX(*compilerArgs, source, "-emit-llvm", "-c", "-o", outputFileName)
+    runCmd(compilerCmd.toTypedArray(), verbose = true)
+    outputFileName
+}
 
 private fun resolveDependencies(
         cinteropArguments: CInteropArguments, target: KonanTarget

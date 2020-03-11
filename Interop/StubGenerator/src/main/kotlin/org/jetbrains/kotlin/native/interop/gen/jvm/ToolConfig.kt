@@ -34,15 +34,17 @@ class ToolConfig(userProvidedTargetName: String?, flavor: KotlinPlatform) {
 
     private val platform = platformManager.platform(target)
 
+    val clang = platform.clang
+
     val substitutions = defaultTargetSubstitutions(target)
 
     fun downloadDependencies() = platform.downloadDependencies()
 
     val defaultCompilerOpts =
-            platform.clang.targetLibclangArgs.toList()
+            clang.targetLibclangArgs.toList()
 
     val platformCompilerOpts = if (flavor == KotlinPlatform.JVM)
-            platform.clang.hostCompilerArgsForJni.toList() else emptyList()
+            clang.hostCompilerArgsForJni.toList() else emptyList()
 
     val llvmHome = platform.absoluteLlvmHome
     val sysRoot = platform.absoluteTargetSysRoot
