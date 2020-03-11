@@ -23,18 +23,16 @@ import org.jetbrains.kotlin.library.SerializedMetadata
 import org.jetbrains.kotlin.util.removeSuffixIfPresent
 import java.util.*
 
-data class LibraryCreationArguments(
-        val metadata: KlibModuleMetadata,
-        val outputPath: String,
-        val moduleName: String,
-        val nativeBitcodePath: String,
-        val target: KonanTarget,
-        val manifest: Properties,
-        val dependencies: List<KotlinLibrary>,
-        val nopack: Boolean
-)
-
-fun createInteropLibrary(arguments: LibraryCreationArguments) {
+fun createInteropLibrary(
+        metadata: KlibModuleMetadata,
+        outputPath: String,
+        moduleName: String,
+        nativeBitcodePathes: List<String>,
+        target: KonanTarget,
+        manifest: Properties,
+        dependencies: List<KotlinLibrary>,
+        nopack: Boolean
+) {
     val version = KotlinLibraryVersioning(
             libraryVersion = null,
             abiVersion = KotlinAbiVersion.CURRENT,
@@ -42,21 +40,29 @@ fun createInteropLibrary(arguments: LibraryCreationArguments) {
             metadataVersion = KlibMetadataVersion.INSTANCE.toString(),
             irVersion = KlibIrVersion.INSTANCE.toString()
     )
-    val outputPathWithoutExtension = arguments.outputPath.removeSuffixIfPresent(".klib")
+    val outputPathWithoutExtension = outputPath.removeSuffixIfPresent(".klib")
     KonanLibraryWriterImpl(
             File(outputPathWithoutExtension),
-            arguments.moduleName,
+            moduleName,
             version,
-            arguments.target,
-            nopack = arguments.nopack
+            target,
+            nopack = nopack
     ).apply {
-        val metadata = arguments.metadata.write(ChunkingWriteStrategy())
-        addMetadata(SerializedMetadata(metadata.header, metadata.fragments, metadata.fragmentNames))
-        addNativeBitcode(arguments.nativeBitcodePath)
-        addManifestAddend(arguments.manifest)
-        addLinkDependencies(arguments.dependencies)
+        addMetadata(serializeMetadata(metadata))
+        nativeBitcodePathes.map(this::addNativeBitcode)
+        addManifestAddend(manifest)
+        addLinkDependencies(dependencies)
         commit()
     }
+}
+
+private fun serializeMetadata(metadata: KlibModuleMetadata): SerializedMetadata {
+    val chunkedMetadata = metadata.write(ChunkingWriteStrategy())
+    return SerializedMetadata(
+            chunkedMetadata.header,
+            chunkedMetadata.fragments,
+            chunkedMetadata.fragmentNames
+    )
 }
 
 // TODO: Consider adding it to kotlinx-metadata-klib.
