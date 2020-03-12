@@ -333,7 +333,8 @@ private fun processCLib(args: Array<String>, additionalArgs: Map<String, Any> = 
 
     return when (stubIrOutput) {
         is StubIrDriver.Result.SourceCode -> {
-            argsToCompiler(staticLibraries, libraryPaths)
+            val bitcodePaths = compiledFiles.map {  listOf("-native-library", it) }.flatten()
+            argsToCompiler(staticLibraries, libraryPaths) + bitcodePaths
         }
         is StubIrDriver.Result.Metadata -> {
             createInteropLibrary(
@@ -355,9 +356,9 @@ private fun compileSources(
         nativeLibsDir: String,
         toolConfig: ToolConfig,
         cinteropArguments: CInteropArguments
-): List<String> = cinteropArguments.compileSource.map { source ->
-    // Mangle path into file name to avoid collisions.
-    val mangledFileName = File(source).invariantSeparatorsPath.replace('/', '_')
+): List<String> = cinteropArguments.compileSource.mapIndexed { index, source ->
+    // Mangle file name to avoid collisions.
+    val mangledFileName = "${index}_${File(source).nameWithoutExtension}"
     val outputFileName = "$nativeLibsDir/${mangledFileName}.bc"
     val compilerArgs = cinteropArguments.sourceCompileOptions.toTypedArray()
     val compilerCmd = toolConfig.clang.clangCXX(*compilerArgs, source, "-emit-llvm", "-c", "-o", outputFileName)

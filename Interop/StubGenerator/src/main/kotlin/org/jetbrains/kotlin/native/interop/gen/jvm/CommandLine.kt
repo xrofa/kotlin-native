@@ -106,14 +106,14 @@ class CInteropArguments(argParser: ArgParser =
     val linker by argParser.option(ArgType.String, description = "use specified linker")
 
     val compileSource by argParser.option(ArgType.String,
-            fullName = "Xcompile-source",
+            fullName = COMPILE_SOURCES,
             description = "additional C/C++ sources to be compiled into resulting library"
-    ).multiple().delimiter(",")
+    ).multiple()
 
     val sourceCompileOptions by argParser.option(ArgType.String,
-            fullName = "Xsource-compile-options",
-            description = "compiler options for sources provided via $COMPILE_SOURCES"
-    ).multiple().delimiter(",")
+            fullName = "Xsource-compiler-option",
+            description = "compiler options for sources provided via -$COMPILE_SOURCES"
+    ).multiple()
 }
 
 class JSInteropArguments(argParser: ArgParser = ArgParser("jsinterop",
