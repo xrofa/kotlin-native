@@ -3395,7 +3395,7 @@ createInterop("auxiliaryCppSources") {
     it.defFile 'interop/auxiliary_sources/auxiliaryCppSources.def'
     it.headers "$projectDir/interop/auxiliary_sources/name.h"
     it.extraOpts "-Xcompile-source", "$projectDir/interop/auxiliary_sources/name.cpp"
-    it.extraOpts "-Xsource-compile-options", "-std=c++17"
+    it.extraOpts "-Xsource-compiler-option", "-std=c++17"
 }
 
 if (PlatformInfo.isAppleTarget(project)) {
