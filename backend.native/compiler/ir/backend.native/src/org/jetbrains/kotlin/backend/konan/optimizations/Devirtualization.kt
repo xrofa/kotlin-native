@@ -130,7 +130,7 @@ internal object Devirtualization {
         private val symbolTable = moduleDFG.symbolTable
 
         class IntArrayList : Iterable<Int> {
-            private var array = ByteArray(4)
+            private var array = IntArray(3)
             private var length = 0
 
             val size get() = length
@@ -139,33 +139,29 @@ internal object Devirtualization {
 
             fun add(x: Int) {
                 length++
-                ensureCapacity(length * 4)
+                ensureCapacity(length)
                 set(length - 1, x)
             }
 
             fun reserve(minSize: Int) {
                 if (length >= minSize) return
                 length = minSize
-                ensureCapacity(minSize * 4)
+                ensureCapacity(minSize)
             }
 
             operator fun get(index: Int): Int = when {
                 index < 0 || index >= length -> throw IndexOutOfBoundsException("Index out of range: $index")
 
-                else -> array.getIntAt(index * 4)
+                else -> array[index]
             }
 
             operator fun set(index: Int, x: Int) = when {
                 index < 0 || index >= length -> throw IndexOutOfBoundsException("Index out of range: $index")
 
-                else -> array.setIntAt(index * 4, x)
+                else -> array[index] = x
             }
 
             override operator fun iterator(): Iterator<Int> = Itr()
-
-            private fun ByteArray.getIntAt(index: Int) = TheUnsafe.getInt(this, ByteArrayDataOffset + index)
-
-            private fun ByteArray.setIntAt(index: Int, x: Int) = TheUnsafe.putInt(this, ByteArrayDataOffset + index, x)
 
             private fun ensureCapacity(minCapacity: Int) {
                 val oldArray = array
@@ -173,8 +169,8 @@ internal object Devirtualization {
                     var newSize = oldArray.size * 3 / 2
                     if (minCapacity > newSize)
                         newSize = minCapacity
-                    val newArray = ByteArray(newSize)
-                    TheUnsafe.copyMemory(oldArray, ByteArrayDataOffset, newArray, ByteArrayDataOffset, oldArray.size.toLong())
+                    val newArray = IntArray(newSize)
+                    TheUnsafe.copyMemory(oldArray, IntArrayDataOffset, newArray, IntArrayDataOffset, oldArray.size.toLong() * 4)
                     array = newArray
                 }
             }
@@ -194,12 +190,12 @@ internal object Devirtualization {
                     it.get(null) as Unsafe
                 }
 
-                val ByteArrayDataOffset = TheUnsafe.arrayBaseOffset(ByteArray::class.java).toLong()
+                val IntArrayDataOffset = TheUnsafe.arrayBaseOffset(IntArray::class.java).toLong()
             }
         }
 
         class LongArrayList : Iterable<Long> {
-            private var array = ByteArray(8)
+            private var array = LongArray(3)
             private var length = 0
 
             val size get() = length
@@ -208,27 +204,23 @@ internal object Devirtualization {
 
             fun add(x: Long) {
                 length++
-                ensureCapacity(length * 8)
+                ensureCapacity(length)
                 set(length - 1, x)
             }
 
             operator fun get(index: Int): Long = when {
                 index < 0 || index >= length -> throw IndexOutOfBoundsException("Index out of range: $index")
 
-                else -> array.getLongAt(index * 8)
+                else -> array[index]
             }
 
             operator fun set(index: Int, x: Long) = when {
                 index < 0 || index >= length -> throw IndexOutOfBoundsException("Index out of range: $index")
 
-                else -> array.setLongAt(index * 8, x)
+                else -> array[index] = x
             }
 
             override operator fun iterator(): Iterator<Long> = Itr()
-
-            private fun ByteArray.getLongAt(index: Int) = TheUnsafe.getLong(this, ByteArrayDataOffset + index)
-
-            private fun ByteArray.setLongAt(index: Int, x: Long) = TheUnsafe.putLong(this, ByteArrayDataOffset + index, x)
 
             private fun ensureCapacity(minCapacity: Int) {
                 val oldArray = array
@@ -236,8 +228,8 @@ internal object Devirtualization {
                     var newSize = oldArray.size * 3 / 2
                     if (minCapacity > newSize)
                         newSize = minCapacity
-                    val newArray = ByteArray(newSize)
-                    TheUnsafe.copyMemory(oldArray, ByteArrayDataOffset, newArray, ByteArrayDataOffset, oldArray.size.toLong())
+                    val newArray = LongArray(newSize)
+                    TheUnsafe.copyMemory(oldArray, LongArrayDataOffset, newArray, LongArrayDataOffset, oldArray.size.toLong() * 8)
                     array = newArray
                 }
             }
@@ -257,7 +249,7 @@ internal object Devirtualization {
                     it.get(null) as Unsafe
                 }
 
-                val ByteArrayDataOffset = TheUnsafe.arrayBaseOffset(ByteArray::class.java).toLong()
+                val LongArrayDataOffset = TheUnsafe.arrayBaseOffset(LongArray::class.java).toLong()
             }
         }
 
