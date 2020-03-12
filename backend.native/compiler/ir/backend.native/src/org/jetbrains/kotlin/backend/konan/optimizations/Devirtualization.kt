@@ -340,6 +340,11 @@ internal object Devirtualization {
             }
         }
 
+        private inline fun IntArray.forEachEdge(v: Int, block: (Int) -> Unit) {
+            for (i in this[v] until this[v + 1])
+                block(this[i])
+        }
+
         inner class TypeHierarchy(val allTypes: Array<DataFlowIR.Type.Declared>) {
             private val typesSubTypes = Array(allTypes.size) { mutableListOf<DataFlowIR.Type.Declared>() }
             private val allInheritors = Array(allTypes.size) { BitSet() }
@@ -397,8 +402,8 @@ internal object Devirtualization {
                 val prevFront = front
                 front = mutableListOf()
                 for (from in prevFront) {
-                    for (i in reversedEdges[from.id] until reversedEdges[from.id + 1]) {
-                        val toId = reversedEdges[i]
+                    var endBfs = false
+                    reversedEdges.forEachEdge(from.id) { toId ->
                         val to = nodes[toId]
                         if (!visited[toId] && to.types[type]) {
                             visited.set(toId)
@@ -406,10 +411,12 @@ internal object Devirtualization {
                             front.add(to)
                             if (to is Node.Source) {
                                 source = to
-                                break@bfs
+                                endBfs = true
+                                return@forEachEdge
                             }
                         }
                     }
+                    if (endBfs) break@bfs
                     val reversedCastEdges = from.reversedCastEdges
                     if (reversedCastEdges != null)
                         for (castEdge in reversedCastEdges) {
@@ -489,8 +496,7 @@ internal object Devirtualization {
 
             private fun findOrder(node: Node, order: IntArray) {
                 visited.set(node.id)
-                for (i in directEdges[node.id] until directEdges[node.id + 1]) {
-                    val it = directEdges[i]
+                directEdges.forEachEdge(node.id) {
                     if (!visited[it])
                         findOrder(nodes[it], order)
                 }
@@ -500,8 +506,7 @@ internal object Devirtualization {
             private fun paint(node: Node) {
                 visited.set(node.id)
                 multiNodes[index++] = node.id
-                for (i in reversedEdges[node.id] until reversedEdges[node.id + 1]) {
-                    val it = reversedEdges[i]
+                reversedEdges.forEachEdge(node.id) {
                     if (!visited[it])
                         paint(nodes[it])
                 }
@@ -511,13 +516,11 @@ internal object Devirtualization {
                 visited.set(multiNode.id)
                 for (v in multiNode.multiNodeStart until multiNode.multiNodeEnd) {
                     val node = nodes[multiNodes[v]]
-                    for (i in directEdges[node.id] until directEdges[node.id + 1]) {
-                        val it = directEdges[i]
+                    directEdges.forEachEdge(node.id) {
                         val nextMultiNode = multiNodes[nodes[it].multiNodeStart]
                         if (!visited[nextMultiNode])
                             findMultiNodesOrder(nodes[nextMultiNode], order)
                     }
-
                 }
                 order[index++] = multiNode.id
             }
@@ -546,8 +549,8 @@ internal object Devirtualization {
                 println("FULL CONSTRAINT GRAPH")
                 constraintGraph.nodes.forEach {
                     println("    NODE #${it.id}")
-                    for (i in directEdges[it.id] until directEdges[it.id + 1]) {
-                        println("        EDGE: #${directEdges[i]}z")
+                    directEdges.forEachEdge(it.id) {
+                        println("        EDGE: #${it}z")
                     }
                     it.directCastEdges?.forEach {
                         println("        CAST EDGE: #${it.node.id}z casted to ${it.suitableTypes.format(allTypes)}")
@@ -608,8 +611,7 @@ internal object Devirtualization {
                         continue // A source has no incoming edges.
                     val types = BitSet()
                     condensation.forEachNode(multiNode) { node ->
-                        for (i in reversedEdges[node.id] until reversedEdges[node.id + 1]) {
-                            val it = reversedEdges[i]
+                        reversedEdges.forEachEdge(node.id) {
                             types.or(constraintGraph.nodes[it].types)
                         }
                         node.reversedCastEdges
@@ -665,8 +667,7 @@ internal object Devirtualization {
                 for (i in 0 until prevFrontSize) {
                     marked[prevFront[i]] = false
                     val node = constraintGraph.nodes[prevFront[i]]
-                    for (j in directEdges[node.id] until directEdges[node.id + 1]) {
-                        val distNodeId = directEdges[j]
+                    directEdges.forEachEdge(node.id) { distNodeId ->
                         val distNode = constraintGraph.nodes[distNodeId]
                         if (marked[distNode.id])
                             distNode.types.or(node.types)
@@ -796,6 +797,11 @@ internal object Devirtualization {
             return AnalysisResult(result.asSequence().associateBy({ it.key }, { it.value.first }), typeHierarchy)
         }
 
+        // Both [directEdges] and [reversedEdges] are the array representation of a graph:
+        // for each node v the edges of that node are stored in edges[edges[v] until edges[v + 1]].
+        private data class ConstraintGraphBuildResult(val instantiatingClasses: BitSet,
+                                                      val directEdges: IntArray, val reversedEdges: IntArray)
+
         // Here we're dividing the build process onto two phases:
         // 1. build bag of edges and direct edges array;
         // 2. build reversed edges array from the direct edges array.
@@ -810,9 +816,6 @@ internal object Devirtualization {
             return ConstraintGraphBuildResult(precursor.instantiatingClasses, precursor.directEdges,
                     buildReversedEdges(precursor.directEdges, precursor.reversedEdgesCount))
         }
-
-        private data class ConstraintGraphBuildResult(val instantiatingClasses: BitSet,
-                                                      val directEdges: IntArray, val reversedEdges: IntArray)
 
         private class ConstraintGraphPrecursor(val instantiatingClasses: BitSet,
                                                val directEdges: IntArray, val reversedEdgesCount: IntArrayList)
@@ -830,8 +833,7 @@ internal object Devirtualization {
                 reversedEdgesCount[v] = 0
             }
             for (from in 0 until numberOfNodes) {
-                for (i in directEdges[from] until directEdges[from + 1]) {
-                    val to = directEdges[i]
+                directEdges.forEachEdge(from) { to ->
                     reversedEdges[reversedEdges[to] + (reversedEdgesCount[to]++)] = from
                 }
             }
@@ -849,8 +851,9 @@ internal object Devirtualization {
             val directEdgesCount = constraintGraphBuilder.directEdgesCount
             val reversedEdgesCount = constraintGraphBuilder.reversedEdgesCount
             val numberOfNodes = constraintGraph.nodes.size
-            directEdgesCount.reserve(numberOfNodes)
-            reversedEdgesCount.reserve(numberOfNodes)
+            // numberOfNodes + 1 for convenience.
+            directEdgesCount.reserve(numberOfNodes + 1)
+            reversedEdgesCount.reserve(numberOfNodes + 1)
             var edgesArraySize = numberOfNodes + 1
             for (v in 0 until numberOfNodes)
                 edgesArraySize += directEdgesCount[v]
@@ -864,17 +867,16 @@ internal object Devirtualization {
             for (bucket in bagOfEdges)
                 if (bucket != null)
                     for (edge in bucket) {
-                val from = edge.toInt()
-                val to = (edge shr 32).toInt()
-                directEdges[directEdges[from] + (directEdgesCount[from]++)] = to
-            }
+                        val from = edge.toInt()
+                        val to = (edge shr 32).toInt()
+                        directEdges[directEdges[from] + (directEdgesCount[from]++)] = to
+                    }
             return ConstraintGraphPrecursor(constraintGraphBuilder.instantiatingClasses, directEdges, reversedEdgesCount)
         }
 
         private class ConstraintGraphVirtualCall(val caller: Function, val virtualCall: DataFlowIR.Node.VirtualCall,
                                                  val arguments: List<Node>, val returnsNode: Node)
 
-        @ExperimentalUnsignedTypes
         private inner class ConstraintGraphBuilder(val functionNodesMap: MutableMap<DataFlowIR.Node, Node>,
                                                    val functions: Map<DataFlowIR.FunctionSymbol, DataFlowIR.Function>,
                                                    val typeHierarchy: TypeHierarchy,
@@ -894,29 +896,31 @@ internal object Devirtualization {
                             functions.size * 2 + // <returns> and <throws> nodes for each function.
                             functions.values.sumBy { it.body.nodes.size } + // A node for each DataFlowIR.Node.
                             functions.values
-                                    .flatMap { it.body.nodes }
-                                    .count {
-                                        // A cast if types are different.
-                                        it is DataFlowIR.Node.Call
-                                                && it.returnType.resolved() != it.callee.returnParameter.type.resolved()
+                                    .sumBy { function ->
+                                        function.body.nodes.count { node ->
+                                            // A cast if types are different.
+                                            node is DataFlowIR.Node.Call
+                                                    && node.returnType.resolved() != node.callee.returnParameter.type.resolved()
+                                        }
                                     }
+
+            private fun isPrime(x: Int): Boolean {
+                if (x <= 3) return true
+                if (x % 2 == 0) return false
+                var r = 3
+                while (r * r <= x) {
+                    if (x % r == 0) return false
+                    r += 2
+                }
+                return true
+            }
 
             private fun makePrime(x: Int): Int {
                 var x = x
                 while (true) {
-                    var ok = true
-                    var r = 2
-                    while (r * r <= x) {
-                        if (x % r == 0) {
-                            ok = false
-                            break
-                        }
-                        ++r
-                    }
-                    if (ok) break
+                    if (isPrime(x)) return x
                     ++x
                 }
-                return x
             }
 
             // A heuristic: the number of edges in the data flow graph
