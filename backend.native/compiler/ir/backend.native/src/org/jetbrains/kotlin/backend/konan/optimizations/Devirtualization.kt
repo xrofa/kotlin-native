@@ -138,19 +138,27 @@ internal object Devirtualization {
             fun isEmpty() = size == 0
 
             fun add(x: Int) {
-                ensureCapacity(4 + length * 4)
-                set(length, x)
                 length++
+                ensureCapacity(length * 4)
+                set(length - 1, x)
             }
 
             fun reserve(minSize: Int) {
+                if (length >= minSize) return
+                length = minSize
                 ensureCapacity(minSize * 4)
             }
 
-            operator fun get(index: Int): Int = array.getIntAt(index * 4)
+            operator fun get(index: Int): Int = when {
+                index < 0 || index >= length -> throw IndexOutOfBoundsException("Index out of range: $index")
 
-            operator fun set(index: Int, x: Int) {
-                array.setIntAt(index * 4, x)
+                else -> array.getIntAt(index * 4)
+            }
+
+            operator fun set(index: Int, x: Int) = when {
+                index < 0 || index >= length -> throw IndexOutOfBoundsException("Index out of range: $index")
+
+                else -> array.setIntAt(index * 4, x)
             }
 
             override operator fun iterator(): Iterator<Int> = Itr()
@@ -199,15 +207,21 @@ internal object Devirtualization {
             fun isEmpty() = size == 0
 
             fun add(x: Long) {
-                ensureCapacity(8 + length * 8)
-                set(length, x)
                 length++
+                ensureCapacity(length * 8)
+                set(length - 1, x)
             }
 
-            fun get(index: Int): Long = array.getLongAt(index * 8)
+            operator fun get(index: Int): Long = when {
+                index < 0 || index >= length -> throw IndexOutOfBoundsException("Index out of range: $index")
 
-            fun set(index: Int, x: Long) {
-                array.setLongAt(index * 8, x)
+                else -> array.getLongAt(index * 8)
+            }
+
+            operator fun set(index: Int, x: Long) = when {
+                index < 0 || index >= length -> throw IndexOutOfBoundsException("Index out of range: $index")
+
+                else -> array.setLongAt(index * 8, x)
             }
 
             override operator fun iterator(): Iterator<Long> = Itr()
